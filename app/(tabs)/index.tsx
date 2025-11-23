@@ -156,6 +156,7 @@ export default function BonusApp() {
   const [visitHistory, setVisitHistory] = useState<Visit[]>([]);
   const [rewardClaims, setRewardClaims] = useState<Record<string, string | boolean>>({});
   const [rewardClaimBusy, setRewardClaimBusy] = useState<string | null>(null);
+  const [rewardExpandedId, setRewardExpandedId] = useState<string | null>(null);
   const [selectedCustomerRewardClaims, setSelectedCustomerRewardClaims] = useState<
     Record<string, string | boolean>
   >({});
@@ -869,7 +870,7 @@ const registerForPushNotificationsAsync = async (uid: string) => {
           password: EXPORT_PASSWORD,
         }),
       });
-      Alert.alert("Gesendet", "Push-Nachricht wurde ausgel��st.");
+      Alert.alert("Gesendet", "Push-Nachricht wurde ausgelöst.");
       setPushBody("");
       setPushTitle("");
     } catch (e) {
@@ -1159,6 +1160,16 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
     } finally {
       setRewardClaimBusy(null);
     }
+  };
+
+  const openRewardLink = (action: RewardAction) => {
+    if (!action.url) return;
+    Linking.openURL(action.url).catch(() => {
+      Alert.alert(
+        "Link oeffnen",
+        "Bitte oeffne den Link manuell und zeige uns danach den Nachweis im Salon."
+      );
+    });
   };
 
 
@@ -1503,52 +1514,103 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Prämien-Aktionen</Text>
+              <Text style={styles.sectionTitle}>Praemien-Aktionen</Text>
               {REWARD_ACTIONS.map((action) => {
                 const status = rewardClaims[action.id];
                 const claimed = status === true;
                 const pending = status === "pending";
                 const busy = rewardClaimBusy === action.id;
+                const isExpanded = rewardExpandedId === action.id;
+
+                const statusLabel = claimed
+                  ? "Eingeloest"
+                  : pending
+                  ? "In Pruefung"
+                  : "Offen";
+
                 return (
                   <View key={action.id} style={styles.actionCard}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.actionTitle}>{action.title}</Text>
-                      <Text style={styles.actionDescription}>
-                        {action.description}
-                      </Text>
-                      <Text style={styles.actionPoints}>
-                        +{action.points} Punkte
-                      </Text>
-                      {pending && (
-                        <Text style={styles.actionPending}>
-                          In Prüfung – zeige die Bewertung im Salon, damit wir sie freischalten.
-                        </Text>
-                      )}
-                    </View>
                     <TouchableOpacity
-                      style={[
-                        styles.primaryButton,
-                        styles.actionButton,
-                        (claimed || busy || pending) && styles.actionButtonDisabled,
-                      ]}
-                      disabled={claimed || busy || pending}
-                      onPress={() => handleClaimRewardAction(action)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                      onPress={() =>
+                        setRewardExpandedId((prev) =>
+                          prev === action.id ? null : action.id
+                        )
+                      }
                     >
-                      <Text style={styles.primaryButtonText}>
-                        {claimed
-                          ? "Bereits eingelöst"
-                          : pending
-                          ? "In Prüfung"
-                          : busy
-                          ? "Bitte warten"
-                          : "Jetzt bewerten"}
-                      </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.actionTitle}>{action.title}</Text>
+                        <Text style={styles.actionPoints}>+{action.points} Punkte</Text>
+                      </View>
+                      <View style={{ alignItems: "flex-end" }}>
+                        <View
+                          style={[
+                            styles.statusChip,
+                            claimed
+                              ? styles.statusChipDone
+                              : pending
+                              ? styles.statusChipPending
+                              : styles.statusChipOpen,
+                          ]}
+                        >
+                          <Text style={styles.statusChipText}>{statusLabel}</Text>
+                        </View>
+                        <Text style={styles.dropdownChevron}>
+                          {isExpanded ? "▼" : "▶"}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
+
+                    {isExpanded && (
+                      <>
+                        <Text style={[styles.actionDescription, { marginTop: 6 }]}>
+                          {action.description}
+                        </Text>
+                        {pending && (
+                          <Text style={styles.actionPending}>
+                            In Pruefung - zeige die Bewertung im Salon, damit wir sie freischalten.
+                          </Text>
+                        )}
+                        <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                          {action.url ? (
+                            <TouchableOpacity
+                              style={[styles.secondaryButton, { flex: 1 }]}
+                              onPress={() => openRewardLink(action)}
+                            >
+                              <Text style={styles.secondaryButtonText}>Link oeffnen</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                          <TouchableOpacity
+                            style={[
+                              styles.primaryButton,
+                              styles.actionButton,
+                              { flex: 1 },
+                              (claimed || busy || pending) && styles.actionButtonDisabled,
+                            ]}
+                            disabled={claimed || busy || pending}
+                            onPress={() => handleClaimRewardAction(action)}
+                          >
+                            <Text style={styles.primaryButtonText}>
+                              {claimed
+                                ? "Bereits eingeloest"
+                                : pending
+                                ? "In Pruefung"
+                                : busy
+                                ? "Bitte warten"
+                                : "Punkte anfragen"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
                   </View>
                 );
               })}
             </View>
-
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Deine Besuche</Text>
 
@@ -1947,7 +2009,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
         )}
 
 {/* Push-Nachricht senden */}
-            <View style={[styles.pointsCard, { marginTop: 20 }]}>
+            <View style={[styles.pointsCard, { marginTop: 1 }]}>
               <TouchableOpacity
                 style={styles.accordionHeader}
                 onPress={() => setPushSectionExpanded((prev) => !prev)}
@@ -2443,8 +2505,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   actionCard: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "column",
+    alignItems: "stretch",
     padding: 14,
     backgroundColor: "#fff",
     borderRadius: 14,
@@ -2484,6 +2546,40 @@ const styles = StyleSheet.create({
   },
   actionButtonDisabled: {
     opacity: 0.6,
+  },
+  statusChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 4,
+  },
+  statusChipOpen: {
+    backgroundColor: "#f5e8d7",
+  },
+  statusChipPending: {
+    backgroundColor: "#fff4d6",
+  },
+  statusChipDone: {
+    backgroundColor: "#d7f5e2",
+  },
+  statusChipText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#5c4632",
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: "#c49a6c",
+    borderRadius: 999,
+    paddingVertical: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  secondaryButtonText: {
+    color: "#c49a6c",
+    fontWeight: "600",
+    fontSize: 14,
   },
     dangerButton: {
     backgroundColor: "#c0392b",
