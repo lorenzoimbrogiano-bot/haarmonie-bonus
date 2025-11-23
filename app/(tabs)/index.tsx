@@ -1675,92 +1675,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
         </>
       )}
 
-            {/* Push-Nachricht senden */}
-            <View style={[styles.pointsCard, { marginTop: 20 }]}>
-              <TouchableOpacity
-                style={styles.accordionHeader}
-                onPress={() => setPushSectionExpanded((prev) => !prev)}
-              >
-                <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>
-                <Text style={styles.accordionChevron}>
-                  {pushSectionExpanded ? "\u25BC" : "\u25B6"}
-                </Text>
-              </TouchableOpacity>
-
-              {pushSectionExpanded && (
-                <>
-                  <Text style={{ fontSize: 12, color: "#777", marginBottom: 8 }}>
-                    Senden an ausgewaehlten Kunden oder alle Kunden (Expo Push).
-                  </Text>
-                  <Text style={styles.loginLabel}>Titel</Text>
-                  <TextInput
-                    style={styles.loginInput}
-                    value={pushTitle}
-                    onChangeText={setPushTitle}
-                    placeholder="Titel"
-                  />
-
-                  <Text style={styles.loginLabel}>Nachricht</Text>
-                  <TextInput
-                    style={[styles.loginInput, { height: 80 }]}
-                    value={pushBody}
-                    onChangeText={setPushBody}
-                    placeholder="Nachrichtentext"
-                    multiline
-                  />
-
-                  <View style={{ flexDirection: "row", marginTop: 10 }}>
-                    <TouchableOpacity
-                      style={[
-                        styles.toggleButton,
-                        pushTarget === "selected" && styles.toggleButtonActive,
-                        { flex: 1, marginRight: 6 },
-                      ]}
-                      onPress={() => setPushTarget("selected")}
-                    >
-                      <Text
-                        style={[
-                          styles.toggleButtonText,
-                          pushTarget === "selected" && styles.toggleButtonTextActive,
-                        ]}
-                      >
-                        Ausgewaehlter Kunde
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.toggleButton,
-                        pushTarget === "all" && styles.toggleButtonActive,
-                        { flex: 1, marginLeft: 6 },
-                      ]}
-                      onPress={() => setPushTarget("all")}
-                    >
-                      <Text
-                        style={[
-                          styles.toggleButtonText,
-                          pushTarget === "all" && styles.toggleButtonTextActive,
-                        ]}
-                      >
-                        Alle Kunden
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.adminActionButton,
-                      { marginTop: 12, opacity: pushBusy ? 0.6 : 1 },
-                    ]}
-                    disabled={pushBusy}
-                    onPress={handleOpenPushPasswordModal}
-                  >
-                    <Text style={styles.primaryButtonText}>
-                      {pushBusy ? "Sende..." : "Push senden"}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
+            
 
                   {selectedCustomer && (
                     <>
@@ -1831,7 +1746,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                           <Text style={styles.primaryButtonText}>Punkte speichern</Text>
                         </TouchableOpacity>
                       </View>
-                      <View style={[styles.pointsCard, { marginTop: 12 }]}>
+                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
                         <TouchableOpacity
                           style={styles.accordionHeader}
                           onPress={() => setRewardActionsExpanded((prev) => !prev)}
@@ -2030,6 +1945,93 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                   )}
           </View>
         )}
+
+{/* Push-Nachricht senden */}
+            <View style={[styles.pointsCard, { marginTop: 20 }]}>
+              <TouchableOpacity
+                style={styles.accordionHeader}
+                onPress={() => setPushSectionExpanded((prev) => !prev)}
+              >
+                <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>
+                <Text style={styles.accordionChevron}>
+                  {pushSectionExpanded ? "\u25BC" : "\u25B6"}
+                </Text>
+              </TouchableOpacity>
+
+              {pushSectionExpanded && (
+                <>
+                  <Text style={{ fontSize: 12, color: "#777", marginBottom: 8 }}>
+                    Senden an ausgewählten Kunden oder alle Kunden
+                  </Text>
+                  <Text style={styles.loginLabel}>Titel</Text>
+                  <TextInput
+                    style={styles.loginInput}
+                    value={pushTitle}
+                    onChangeText={setPushTitle}
+                    placeholder="Titel"
+                  />
+
+                  <Text style={styles.loginLabel}>Nachricht</Text>
+                  <TextInput
+                    style={[styles.loginInput, { height: 80 }]}
+                    value={pushBody}
+                    onChangeText={setPushBody}
+                    placeholder="Nachrichtentext"
+                    multiline
+                  />
+
+                  <View style={{ flexDirection: "row", marginTop: 10 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.toggleButton,
+                        pushTarget === "selected" && styles.toggleButtonActive,
+                        { flex: 1, marginRight: 6 },
+                      ]}
+                      onPress={() => setPushTarget("selected")}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleButtonText,
+                          pushTarget === "selected" && styles.toggleButtonTextActive,
+                        ]}
+                      >
+                        Ausgewaehlter Kunde
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.toggleButton,
+                        pushTarget === "all" && styles.toggleButtonActive,
+                        { flex: 1, marginLeft: 6 },
+                      ]}
+                      onPress={() => setPushTarget("all")}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleButtonText,
+                          pushTarget === "all" && styles.toggleButtonTextActive,
+                        ]}
+                      >
+                        Alle Kunden
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.adminActionButton,
+                      { marginTop: 12, opacity: pushBusy ? 0.6 : 1 },
+                    ]}
+                    disabled={pushBusy}
+                    onPress={handleOpenPushPasswordModal}
+                  >
+                    <Text style={styles.primaryButtonText}>
+                      {pushBusy ? "Sende..." : "Push senden"}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
       </ScrollView>
       </KeyboardAvoidingView>
 
