@@ -1,0 +1,39 @@
+mutation CreateUser @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  user_insert(data: {
+    email: "default@example.com",
+    password: "defaultPassword",
+    createdAt_expr: "request.time"
+  })
+}
+
+query ListServices @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  services {
+    id
+    name
+    description
+    durationMinutes
+    price
+  }
+}
+
+query GetEmployeeAvailability @auth(level: USER) {
+  employeeAvailabilities(where: {employeeId: {eq_expr: "auth.uid"}}) {
+    id
+    dayOfWeek
+    startTime
+    endTime
+  }
+}
+
+mutation CreateAppointment($serviceId: UUID!, $appointmentTime: Timestamp!, $durationMinutes: Int!, $notes: String) @auth(level: USER) {
+  appointment_insert(data: {
+    customerId_expr: "auth.uid",
+    employeeId_expr: "auth.uid",
+    serviceId: $serviceId,
+    appointmentTime: $appointmentTime,
+    createdAt_expr: "request.time",
+    durationMinutes: $durationMinutes,
+    notes: $notes,
+    status: "scheduled"
+  })
+}

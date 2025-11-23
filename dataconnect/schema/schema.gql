@@ -1,0 +1,38 @@
+type User @table {
+  email: String!
+  password: String!
+  createdAt: Timestamp!
+  firstName: String
+  lastName: String
+  phoneNumber: String
+  role: String
+}
+
+type Service @table {
+  name: String!
+  durationMinutes: Int!
+  price: Float!
+  createdAt: Timestamp!
+  description: String
+}
+
+type EmployeeAvailability @table {
+  employee: User!
+  dayOfWeek: String!
+  startTime: String!
+  endTime: String!
+  createdAt: Timestamp!
+  breakTimes: String
+}
+
+type Appointment @table {
+  customer: User!
+  employee: User!
+  service: Service!
+  appointmentTime: Timestamp!
+  durationMinutes: Int!
+  status: String!
+  createdAt: Timestamp!
+  notes: String
+  reminderSent: Boolean
+}
