@@ -1166,8 +1166,8 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
     if (!action.url) return;
     Linking.openURL(action.url).catch(() => {
       Alert.alert(
-        "Link oeffnen",
-        "Bitte oeffne den Link manuell und zeige uns danach den Nachweis im Salon."
+        "Link öffnen",
+        "Bitte öffne den Link manuell und zeige uns danach den Nachweis im Salon."
       );
     });
   };
@@ -1514,7 +1514,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Praemien-Aktionen</Text>
+              <Text style={styles.sectionTitle}>Prämien-Aktionen</Text>
               {REWARD_ACTIONS.map((action) => {
                 const status = rewardClaims[action.id];
                 const claimed = status === true;
@@ -1523,9 +1523,9 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                 const isExpanded = rewardExpandedId === action.id;
 
                 const statusLabel = claimed
-                  ? "Eingeloest"
+                  ? "Eingelöst"
                   : pending
-                  ? "In Pruefung"
+                  ? "In Prüfung"
                   : "Offen";
 
                 return (
@@ -1572,7 +1572,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                         </Text>
                         {pending && (
                           <Text style={styles.actionPending}>
-                            In Pruefung - zeige die Bewertung im Salon, damit wir sie freischalten.
+                            In Pr?fung - zeige die Bewertung im Salon, damit wir sie freischalten.
                           </Text>
                         )}
                         <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
@@ -1581,7 +1581,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                               style={[styles.secondaryButton, { flex: 1 }]}
                               onPress={() => openRewardLink(action)}
                             >
-                              <Text style={styles.secondaryButtonText}>Link oeffnen</Text>
+                              <Text style={styles.secondaryButtonText}>Link öffnen</Text>
                             </TouchableOpacity>
                           ) : null}
                           <TouchableOpacity
@@ -1596,9 +1596,9 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                           >
                             <Text style={styles.primaryButtonText}>
                               {claimed
-                                ? "Bereits eingeloest"
+                                ? "Bereits eingel?st"
                                 : pending
-                                ? "In Pruefung"
+                                ? "In Pr?fung"
                                 : busy
                                 ? "Bitte warten"
                                 : "Punkte anfragen"}
