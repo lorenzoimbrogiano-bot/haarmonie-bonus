@@ -9,12 +9,17 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
+const ADMIN_PASSWORD = "MiaLina&76429074";
+
 exports.sendPush = functions.https.onRequest(async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).send("Method not allowed");
   }
 
-  const { title, body, target = "all", userId } = req.body || {};
+  const { title, body, target = "all", userId, password } = req.body || {};
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ error: "forbidden" });
+  }
   if (!title || !body) {
     return res.status(400).json({ error: "title and body are required" });
   }
