@@ -1572,7 +1572,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                         </Text>
                         {pending && (
                           <Text style={styles.actionPending}>
-                            In Pr?fung - zeige die Bewertung im Salon, damit wir sie freischalten.
+                            In Prüfung - zeige die Bewertung im Salon, damit wir sie freischalten.
                           </Text>
                         )}
                         <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
@@ -1598,7 +1598,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                               {claimed
                                 ? "Bereits eingel?st"
                                 : pending
-                                ? "In Pr?fung"
+                                ? "In Prüfung"
                                 : busy
                                 ? "Bitte warten"
                                 : "Punkte anfragen"}
@@ -2008,7 +2008,9 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
           </View>
         )}
 
-{/* Push-Nachricht senden */}
+        {isAdmin && isAdminView && (
+          <>
+            {/* Push-Nachricht senden */}
             <View style={[styles.pointsCard, { marginTop: 1 }]}>
               <TouchableOpacity
                 style={styles.accordionHeader}
@@ -2094,6 +2096,8 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                 </>
               )}
             </View>
+          </>
+        )}
       </ScrollView>
       </KeyboardAvoidingView>
 
