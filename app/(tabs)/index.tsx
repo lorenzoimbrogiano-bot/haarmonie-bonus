@@ -190,6 +190,7 @@ export default function BonusApp() {
   const [pushTarget, setPushTarget] = useState<"all" | "selected">("selected");
   const [pushBusy, setPushBusy] = useState(false);
   const [pushSectionExpanded, setPushSectionExpanded] = useState(false);
+  const [pushUnlocked, setPushUnlocked] = useState(false);
   const [showPushPasswordModal, setShowPushPasswordModal] = useState(false);
   const [pushPasswordInput, setPushPasswordInput] = useState("");
   const [pushPasswordError, setPushPasswordError] = useState("");
@@ -422,6 +423,8 @@ useEffect(() => {
         setSelectedCustomer(null);
         setPushTitle("");
         setPushBody("");
+        setPushSectionExpanded(false);
+        setPushUnlocked(false);
       }
       return undefined;
     }, [firebaseUser])
@@ -595,6 +598,8 @@ useEffect(() => {
       setCustomerSearch("");
       setPushTitle("");
       setPushBody("");
+      setPushSectionExpanded(false);
+      setPushUnlocked(false);
     } catch (e) {
       console.error("Fehler beim Logout:", e);
       Alert.alert("Fehler", "Logout ist fehlgeschlagen.");
@@ -826,26 +831,21 @@ const registerForPushNotificationsAsync = async (uid: string) => {
     }
   }, [firebaseUser?.uid]);
 
-  const handleOpenPushPasswordModal = () => {
-    if (!pushTitle.trim() || !pushBody.trim()) {
-      Alert.alert("Angaben fehlen", "Bitte Titel und Nachricht ausfǬllen.");
+  const handleRequestPushAccess = () => {
+    if (pushSectionExpanded) {
+      setPushSectionExpanded(false);
       return;
     }
-    if (pushTarget === "selected" && !selectedCustomer) {
-      Alert.alert("Kunde fehlt", "Bitte zuerst einen Kunden auswählen.");
+    if (pushUnlocked) {
+      setPushSectionExpanded(true);
       return;
     }
-    if (!CLOUD_FUNCTION_PUSH_URL.startsWith("https://")) {
-      Alert.alert("Push-Endpoint fehlt", "Bitte CLOUD_FUNCTION_PUSH_URL konfigurieren.");
-      return;
-    }
-
     setPushPasswordError("");
     setPushPasswordInput("");
     setShowPushPasswordModal(true);
   };
 
-  const handleSendPush = async () => {
+  const handleConfirmPushPassword = () => {
     const providedPassword = pushPasswordInput.trim();
     if (providedPassword !== EXPORT_PASSWORD) {
       setPushPasswordError("Passwort ist falsch.");
@@ -853,7 +853,30 @@ const registerForPushNotificationsAsync = async (uid: string) => {
     }
 
     setPushPasswordError("");
+    setPushPasswordInput("");
+    setPushUnlocked(true);
     setShowPushPasswordModal(false);
+    setPushSectionExpanded(true);
+  };
+
+  const handleSendPush = async () => {
+    if (!pushUnlocked) {
+      handleRequestPushAccess();
+      return;
+    }
+    if (!pushTitle.trim() || !pushBody.trim()) {
+      Alert.alert("Angaben fehlen", "Bitte Titel und Nachricht ausf?llen.");
+      return;
+    }
+    if (pushTarget === "selected" && !selectedCustomer) {
+      Alert.alert("Kunde fehlt", "Bitte zuerst einen Kunden ausw?hlen.");
+      return;
+    }
+    if (!CLOUD_FUNCTION_PUSH_URL.startsWith("https://")) {
+      Alert.alert("Push-Endpoint fehlt", "Bitte CLOUD_FUNCTION_PUSH_URL konfigurieren.");
+      return;
+    }
+
     setPushBusy(true);
 
     try {
@@ -870,15 +893,14 @@ const registerForPushNotificationsAsync = async (uid: string) => {
           password: EXPORT_PASSWORD,
         }),
       });
-      Alert.alert("Gesendet", "Push-Nachricht wurde ausgelöst.");
+      Alert.alert("Gesendet", "Push-Nachricht wurde ausgel?st.");
       setPushBody("");
       setPushTitle("");
     } catch (e) {
       console.error("Push senden fehlgeschlagen", e);
-      Alert.alert("Fehler", "Push konnte nicht gesendet werden. Bitte Endpoint prǬfen.");
+      Alert.alert("Fehler", "Push konnte nicht gesendet werden. Bitte Endpoint pr?fen.");
     } finally {
       setPushBusy(false);
-      setPushPasswordInput("");
     }
   };
 
@@ -1052,9 +1074,18 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
       return;
     }
 
+    const status = selectedCustomerRewardClaims[action.id];
+    const pending = status === "pending";
     const alreadyClaimed = selectedCustomerRewardClaims[action.id] === true;
     if (alreadyClaimed) {
       Alert.alert("Bereits eingelöst", "Diese Aktion wurde schon gutgeschrieben.");
+      return;
+    }
+    if (!pending) {
+      Alert.alert(
+        "Keine Anfrage",
+        "Die Aktion wurde noch nicht vom Kunden angefragt (Punkte anfragen)."
+      );
       return;
     }
     if (adminRewardBusy === action.id) return;
@@ -1867,7 +1898,16 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                             {REWARD_ACTIONS.map((action) => {
                               const status = selectedCustomerRewardClaims[action.id];
                               const claimed = status === true;
+                              const pending = status === "pending";
                               const busy = adminRewardBusy === action.id;
+                              const disabled = claimed || busy || !pending;
+                              const approveLabel = claimed
+                                ? "Schon gutgeschrieben"
+                                : busy
+                                ? "Bitte warten..."
+                                : pending
+                                ? "Bestätigen & Punkte geben"
+                                : "Noch nicht angefragt";
                               return (
                                 <View key={action.id} style={{ marginBottom: 12 }}>
                                   <Text style={styles.actionTitle}>{action.title}</Text>
@@ -1877,18 +1917,15 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                                     style={[
                                       styles.adminActionButton,
                                       styles.actionButton,
-                                      (claimed || busy) && styles.actionButtonDisabled,
+                                      pending && styles.adminActionButtonPending,
+                                      disabled && styles.actionButtonDisabled,
                                       { marginTop: 6 },
                                     ]}
-                                    disabled={claimed || busy}
+                                    disabled={disabled}
                                     onPress={() => handleAdminApproveRewardAction(action)}
                                   >
                                     <Text style={styles.primaryButtonText}>
-                                      {claimed
-                                        ? "Schon gutgeschrieben"
-                                        : busy
-                                        ? "Bitte warten..."
-                                        : "Bestätigen & Punkte geben"}
+                                      {approveLabel}
                                     </Text>
                                   </TouchableOpacity>
                                 </View>
@@ -2014,7 +2051,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
             <View style={[styles.pointsCard, { marginTop: 1 }]}>
               <TouchableOpacity
                 style={styles.accordionHeader}
-                onPress={() => setPushSectionExpanded((prev) => !prev)}
+                onPress={handleRequestPushAccess}
               >
                 <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>
                 <Text style={styles.accordionChevron}>
@@ -2087,7 +2124,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                       { marginTop: 12, opacity: pushBusy ? 0.6 : 1 },
                     ]}
                     disabled={pushBusy}
-                    onPress={handleOpenPushPasswordModal}
+                    onPress={handleSendPush}
                   >
                     <Text style={styles.primaryButtonText}>
                       {pushBusy ? "Sende..." : "Push senden"}
@@ -2148,10 +2185,10 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                   { marginLeft: 10, opacity: pushBusy ? 0.6 : 1 },
                 ]}
                 disabled={pushBusy}
-                onPress={handleSendPush}
+                onPress={handleConfirmPushPassword}
               >
                 <Text style={styles.primaryButtonText}>
-                  {pushBusy ? "Bitte warten..." : "Push senden"}
+                  {pushBusy ? "Bitte warten..." : "Bestätigen"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -2707,6 +2744,9 @@ const styles = StyleSheet.create({
   justifyContent: "center",
   width: "100%",        // <- macht beide gleich breit
   marginBottom: 10,
+},
+adminActionButtonPending: {
+  backgroundColor: "#2e8b57",
 },
 adminActionButtonText: {
   color: "#fff",
