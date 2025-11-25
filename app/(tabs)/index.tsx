@@ -6,8 +6,8 @@ import * as Device from "expo-device";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import React, { useCallback, useEffect, useState } from "react";
 import LottieView from "lottie-react-native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -1438,6 +1438,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
               </View>
 
               <View style={styles.loginField}>
+                <Text style={styles.loginLabel}>Nachname*</Text>
                 <TextInput
                   style={styles.loginInput}
                   value={lastName}
@@ -1452,6 +1453,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
               </View>
 
               <View style={styles.loginField}>
+                <Text style={styles.loginLabel}>Straße*</Text>
                 <TextInput
                   style={styles.loginInput}
                   value={street}
