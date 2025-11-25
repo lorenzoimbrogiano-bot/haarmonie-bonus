@@ -7,6 +7,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useState } from "react";
+import LottieView from "lottie-react-native";
 import {
   ActivityIndicator,
   Alert,
@@ -127,6 +128,7 @@ export default function BonusApp() {
   // --- Auth-Status ---
   const router = useRouter();
   const keyboardOffset = Platform.OS === "ios" ? 10 : 80;
+  const [showIntro, setShowIntro] = useState(true);
   const [firebaseUser, setFirebaseUser] = useState<{
     uid: string;
     email: string;
@@ -199,6 +201,11 @@ export default function BonusApp() {
   const [exportPasswordInput, setExportPasswordInput] = useState("");
   const [exportPasswordError, setExportPasswordError] = useState("");
   const [exportBusy, setExportBusy] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowIntro(false), 3200);
+    return () => clearTimeout(timer);
+  }, []);
 
 useEffect(() => {
   if (selectedCustomer) {
@@ -1209,6 +1216,20 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
   // -----------------------------------
   // Rendering
   // -----------------------------------
+
+  if (showIntro) {
+    return (
+      <SafeAreaView style={[styles.container, styles.introContainer]}>
+        <LottieView
+          source={require("../../assets/intro.json")}
+          autoPlay
+          loop={false}
+          onAnimationFinish={() => setShowIntro(false)}
+          style={styles.introAnimation}
+        />
+      </SafeAreaView>
+    );
+  }
 
   if (!authChecked) {
     return (
@@ -2326,6 +2347,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFF7F2",
+  },
+  introContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  introAnimation: {
+    width: 260,
+    height: 260,
   },
   loginScroll: {
     padding: 20,
