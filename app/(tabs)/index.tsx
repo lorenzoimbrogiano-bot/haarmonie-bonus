@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -1233,12 +1234,14 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
             automaticallyAdjustKeyboardInsets
             keyboardDismissMode="interactive"
           >
-          <Text style={styles.logoText}>Haarmonie by Cynthia</Text>
-
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logoImage}
+          />
           <Text style={styles.loginTitle}>
             {isRegisterMode
               ? "Registriere dich für deine Bonuspunkte"
-              : "Willkommen in deiner Haarmonie Friseur und Wohlfühlwelt"}
+              : "Willkommen zu deinem\npersönlichen Beauty-Begleiter\njederzeit und überall"}
           </Text>
 
                     {isRegisterMode && (
@@ -2332,6 +2335,13 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 20,
     paddingBottom: 40,
+  },
+  logoImage: {
+    width: 300,
+    height: 100,
+    resizeMode: "contain",
+    alignSelf: "center",
+    marginBottom: 1,
   },
   logoText: {
     fontSize: 26,
