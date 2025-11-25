@@ -195,6 +195,7 @@ export default function BonusApp() {
   const [rewardEmployeeName, setRewardEmployeeName] = useState("");
   const [rewardEmployeeDropdownOpen, setRewardEmployeeDropdownOpen] = useState(false);
   const [rewardActionsExpanded, setRewardActionsExpanded] = useState(false);
+  const [redemptionsExpanded, setRedemptionsExpanded] = useState(false);
   const [editCustomerName, setEditCustomerName] = useState<string>("");
   const [editCustomerEmail, setEditCustomerEmail] = useState<string>("");
   const [editCustomerPhone, setEditCustomerPhone] = useState<string>("");
@@ -1629,6 +1630,70 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
     );
   });
 
+  const pendingRedemptions = selectedCustomerRedemptions.filter(
+    (r) => r.status !== "approved"
+  );
+  const approvedRedemptions = selectedCustomerRedemptions.filter(
+    (r) => r.status === "approved"
+  );
+  const visibleApprovedRedemptions = approvedRedemptions.slice(0, 4);
+  const archivedApprovedCount = Math.max(
+    0,
+    approvedRedemptions.length - visibleApprovedRedemptions.length
+  );
+
+  const renderRedemptionRow = (r: RewardRedemption) => {
+    const busy = redemptionBusyId === r.id;
+    const pending = r.status !== "approved";
+
+    return (
+      <View key={r.id} style={styles.redemptionCard}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.redemptionTitle}>{r.title}</Text>
+          <Text style={styles.redemptionMeta}>
+            {r.pointsRequired} P
+            {r.createdAt ? ` • ${r.createdAt}` : ""}
+          </Text>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <View
+            style={[
+              styles.statusChip,
+              pending ? styles.statusChipPending : styles.statusChipDone,
+            ]}
+          >
+            <Text style={styles.statusChipText}>
+              {pending ? "Offen" : "Bestätigt"}
+            </Text>
+          </View>
+          {pending ? (
+            <TouchableOpacity
+              style={[
+                styles.adminActionButton,
+                styles.actionButton,
+                { marginTop: 8 },
+                (busy || !redemptionEmployeeName.trim()) &&
+                  styles.actionButtonDisabled,
+              ]}
+              disabled={busy || !redemptionEmployeeName.trim()}
+              onPress={() => handleAdminApproveRedemption(r)}
+            >
+              <Text style={styles.primaryButtonText}>
+                {busy ? "Bitte warten..." : "Bestätigen"}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.redemptionApproved}>
+              {r.employeeName
+                ? `Bestätigt durch ${r.employeeName}`
+                : "Bestätigt"}
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -2026,114 +2091,112 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                         </TouchableOpacity>
                       </View>
                       <View style={[styles.pointsCard, { marginTop: 20 }]}>
-                        <Text style={styles.sectionTitle}>Prämien-Einlösungen</Text>
-                        <Text style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
-                          Anfragen aus der Rewards-Seite. Nach Bestätigung werden Punkte
-                          abgezogen und die Historie ergänzt.
-                        </Text>
-
-                        <Text style={[styles.loginLabel, { marginTop: 10 }]}>
-                          Mitarbeiter/in
-                        </Text>
                         <TouchableOpacity
-                          style={styles.dropdownTrigger}
-                          onPress={() =>
-                            setRedemptionEmployeeDropdownOpen((prev) => !prev)
-                          }
+                          style={styles.accordionHeader}
+                          onPress={() => setRedemptionsExpanded((prev) => !prev)}
                         >
-                          <Text style={styles.dropdownTriggerText}>
-                            {redemptionEmployeeName || "Mitarbeiter auswählen"}
-                          </Text>
-                          <Text style={styles.dropdownChevron}>
-                            {redemptionEmployeeDropdownOpen ? "▼" : "▶"}
+                          <Text style={styles.sectionTitle}>Prämien-Einlösungen</Text>
+                          <Text style={styles.accordionChevron}>
+                            {redemptionsExpanded ? "▼" : "▶"}
                           </Text>
                         </TouchableOpacity>
-                        {redemptionEmployeeDropdownOpen && (
-                          <View style={styles.dropdownList}>
-                            {EMPLOYEE_NAMES.map((name) => (
-                              <TouchableOpacity
-                                key={name}
-                                style={[
-                                  styles.dropdownItem,
-                                  redemptionEmployeeName === name &&
-                                    styles.dropdownItemActive,
-                                ]}
-                                onPress={() => {
-                                  setRedemptionEmployeeName(name);
-                                  setRedemptionEmployeeDropdownOpen(false);
-                                }}
-                              >
-                                <Text
-                                  style={[
-                                    styles.dropdownItemText,
-                                    redemptionEmployeeName === name &&
-                                      styles.dropdownItemTextActive,
-                                  ]}
-                                >
-                                  {name}
-                                </Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        )}
 
-                        {selectedCustomerRedemptions.length === 0 ? (
-                          <Text style={[styles.emptyText, { marginTop: 10 }]}>
-                            Keine Anfragen vorhanden.
-                          </Text>
-                        ) : (
-                          selectedCustomerRedemptions.map((r) => {
-                            const busy = redemptionBusyId === r.id;
-                            const pending = r.status !== "approved";
-                            return (
-                              <View key={r.id} style={styles.redemptionCard}>
-                                <View style={{ flex: 1 }}>
-                                  <Text style={styles.redemptionTitle}>{r.title}</Text>
-                                  <Text style={styles.redemptionMeta}>
-                                    {r.pointsRequired} P
-                                    {r.createdAt ? ` • ${r.createdAt}` : ""}
-                                  </Text>
-                                </View>
-                                <View style={{ alignItems: "flex-end" }}>
-                                  <View
+                        {redemptionsExpanded && (
+                          <>
+                            <Text style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                              Anfragen aus der Rewards-Seite. Nach Bestätigung werden Punkte
+                              abgezogen und die Historie ergänzt.
+                            </Text>
+
+                            <Text style={[styles.loginLabel, { marginTop: 10 }]}>
+                              Mitarbeiter/in
+                            </Text>
+                            <TouchableOpacity
+                              style={styles.dropdownTrigger}
+                              onPress={() =>
+                                setRedemptionEmployeeDropdownOpen((prev) => !prev)
+                              }
+                            >
+                              <Text style={styles.dropdownTriggerText}>
+                                {redemptionEmployeeName || "Mitarbeiter auswählen"}
+                              </Text>
+                              <Text style={styles.dropdownChevron}>
+                                {redemptionEmployeeDropdownOpen ? "▼" : "▶"}
+                              </Text>
+                            </TouchableOpacity>
+                            {redemptionEmployeeDropdownOpen && (
+                              <View style={styles.dropdownList}>
+                                {EMPLOYEE_NAMES.map((name) => (
+                                  <TouchableOpacity
+                                    key={name}
                                     style={[
-                                      styles.statusChip,
-                                      pending
-                                        ? styles.statusChipPending
-                                        : styles.statusChipDone,
+                                      styles.dropdownItem,
+                                      redemptionEmployeeName === name &&
+                                        styles.dropdownItemActive,
                                     ]}
+                                    onPress={() => {
+                                      setRedemptionEmployeeName(name);
+                                      setRedemptionEmployeeDropdownOpen(false);
+                                    }}
                                   >
-                                    <Text style={styles.statusChipText}>
-                                      {pending ? "Offen" : "Bestätigt"}
-                                    </Text>
-                                  </View>
-                                  {pending ? (
-                                    <TouchableOpacity
+                                    <Text
                                       style={[
-                                        styles.adminActionButton,
-                                        styles.actionButton,
-                                        { marginTop: 8 },
-                                        (busy || !redemptionEmployeeName.trim()) &&
-                                          styles.actionButtonDisabled,
+                                        styles.dropdownItemText,
+                                        redemptionEmployeeName === name &&
+                                          styles.dropdownItemTextActive,
                                       ]}
-                                      disabled={busy || !redemptionEmployeeName.trim()}
-                                      onPress={() => handleAdminApproveRedemption(r)}
                                     >
-                                      <Text style={styles.primaryButtonText}>
-                                        {busy ? "Bitte warten..." : "Bestätigen"}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ) : (
-                                    <Text style={styles.redemptionApproved}>
-                                      {r.employeeName
-                                        ? `Bestätigt durch ${r.employeeName}`
-                                        : "Bestätigt"}
+                                      {name}
                                     </Text>
-                                  )}
-                                </View>
+                                  </TouchableOpacity>
+                                ))}
                               </View>
-                            );
-                          })
+                            )}
+
+                            {pendingRedemptions.length === 0 &&
+                            visibleApprovedRedemptions.length === 0 ? (
+                              <Text style={[styles.emptyText, { marginTop: 10 }]}>
+                                Keine Anfragen vorhanden.
+                              </Text>
+                            ) : (
+                              <>
+                                {pendingRedemptions.length > 0 && (
+                                  <>
+                                    <Text style={styles.redemptionGroupLabel}>
+                                      Offene Einlösungen
+                                    </Text>
+                                    {pendingRedemptions.map((r) => renderRedemptionRow(r))}
+                                  </>
+                                )}
+
+                                {visibleApprovedRedemptions.length > 0 && (
+                                  <>
+                                    <Text
+                                      style={[
+                                        styles.redemptionGroupLabel,
+                                        {
+                                          marginTop: pendingRedemptions.length ? 12 : 10,
+                                        },
+                                      ]}
+                                    >
+                                      Bestätigt (letzte 4)
+                                    </Text>
+                                    {visibleApprovedRedemptions.map((r) =>
+                                      renderRedemptionRow(r)
+                                    )}
+                                  </>
+                                )}
+
+                                {archivedApprovedCount > 0 && (
+                                  <Text style={styles.archivedNotice}>
+                                    {archivedApprovedCount === 1
+                                      ? "1 ältere Bestätigung wurde archiviert."
+                                      : `${archivedApprovedCount} ältere Bestätigungen wurden archiviert.`}
+                                  </Text>
+                                )}
+                              </>
+                            )}
+                          </>
                         )}
                       </View>
                       <View style={[styles.pointsCard, { marginTop: 20 }]}>
@@ -2936,6 +2999,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#777",
     marginTop: 4,
+  },
+  redemptionGroupLabel: {
+    marginTop: 10,
+    marginBottom: 4,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#555",
+  },
+  archivedNotice: {
+    marginTop: 8,
+    fontSize: 11,
+    color: "#777",
   },
   redemptionApproved: {
     fontSize: 11,
