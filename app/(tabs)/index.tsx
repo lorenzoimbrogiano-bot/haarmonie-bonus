@@ -1271,8 +1271,13 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
           approvedAt: serverTimestamp(),
           employeeName: employee,
         });
-        const visitRef = doc(collection(userRef, "visits"));
-        tx.set(visitRef, {
+      });
+
+      // Besuchshistorie-Eintrag nach erfolgreichem Transaction-Update
+      if (updatedPoints !== null) {
+        const userRef = doc(db, "users", selectedCustomer.id);
+        const visitsRef = collection(userRef, "visits");
+        await addDoc(visitsRef, {
           createdAt: serverTimestamp(),
           amount: null,
           points: -redemption.pointsRequired,
@@ -1280,7 +1285,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
           source: "reward-redemption",
           employeeName: employee,
         });
-      });
+      }
 
       setSelectedCustomer((prev) =>
         prev && updatedPoints !== null ? { ...prev, points: updatedPoints } : prev
@@ -1836,7 +1841,12 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                     <View key={v.id} style={styles.visitItem}>
                       <Text style={styles.visitDate}>{v.date}</Text>
                       <Text style={styles.visitPoints}>
-                        +{v.points} Punkte
+                        {v.points > 0
+                          ? `+${v.points}`
+                          : v.points < 0
+                          ? `${v.points}`
+                          : "0"}{" "}
+                        Punkte
                         {typeof v.amount === "number"
                           ? ` (aus ${v.amount.toFixed(2)} €)`
                           : ""}
