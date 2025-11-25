@@ -36,6 +36,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -97,6 +98,16 @@ type RewardAction = {
   description: string;
   points: number;
   url?: string;
+};
+
+type RewardRedemption = {
+  id: string;
+  rewardId: string;
+  title: string;
+  pointsRequired: number;
+  status: "pending" | "approved";
+  createdAt?: string;
+  employeeName?: string;
 };
 
 const REWARD_ACTIONS: RewardAction[] = [
@@ -164,6 +175,13 @@ export default function BonusApp() {
     Record<string, string | boolean>
   >({});
   const [adminRewardBusy, setAdminRewardBusy] = useState<string | null>(null);
+  const [selectedCustomerRedemptions, setSelectedCustomerRedemptions] = useState<
+    RewardRedemption[]
+  >([]);
+  const [redemptionBusyId, setRedemptionBusyId] = useState<string | null>(null);
+  const [redemptionEmployeeName, setRedemptionEmployeeName] = useState("");
+  const [redemptionEmployeeDropdownOpen, setRedemptionEmployeeDropdownOpen] =
+    useState(false);
 
   // Admin-/Mitarbeiterbereich
   const [isAdminView, setIsAdminView] = useState(false);
@@ -224,6 +242,44 @@ useEffect(() => {
     setEditCustomerCity("");
   }
 }, [selectedCustomer]);
+
+  useEffect(() => {
+    if (!selectedCustomer) {
+      setSelectedCustomerRedemptions([]);
+      return undefined;
+    }
+
+    const userRef = doc(db, "users", selectedCustomer.id);
+    const redemptionsRef = collection(userRef, "rewardRedemptions");
+    const q = query(redemptionsRef, orderBy("createdAt", "desc"));
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const items: RewardRedemption[] = [];
+        snap.forEach((docSnap) => {
+          const d = docSnap.data() as any;
+          items.push({
+            id: docSnap.id,
+            rewardId: typeof d.rewardId === "string" ? d.rewardId : "",
+            title: typeof d.title === "string" ? d.title : "",
+            pointsRequired:
+              typeof d.pointsRequired === "number" ? d.pointsRequired : 0,
+            status: d.status === "approved" ? "approved" : "pending",
+            createdAt: d.createdAt?.toDate
+              ? d.createdAt.toDate().toLocaleString()
+              : "",
+            employeeName:
+              typeof d.employeeName === "string" ? d.employeeName : undefined,
+          });
+        });
+        setSelectedCustomerRedemptions(items);
+      },
+      (err) => console.error("Live-Update rewardRedemptions Fehler:", err)
+    );
+
+    return () => unsub();
+  }, [selectedCustomer]);
 
 
     // Hilfsfunktion: prüfen, ob E-Mail admin ist
@@ -760,12 +816,16 @@ useEffect(() => {
     if (selectedCustomer?.id === c.id) {
       setSelectedCustomer(null);
       setSelectedCustomerRewardClaims({});
+      setSelectedCustomerRedemptions([]);
       setEditPoints("");
       setEditEmployeeName("");
       setRewardEmployeeName("");
+      setRedemptionEmployeeName("");
       setEmployeeDropdownOpen(false);
       setRewardEmployeeDropdownOpen(false);
+      setRedemptionEmployeeDropdownOpen(false);
       setRewardActionsExpanded(false);
+      setRedemptionBusyId(null);
       setCustomerEditExpanded(false);
       setCustomerEditUnlocked(false);
       setCustomerPasswordInput("");
@@ -781,12 +841,16 @@ useEffect(() => {
 
     setSelectedCustomer(c);
     setSelectedCustomerRewardClaims(c.rewardClaims || {});
+    setSelectedCustomerRedemptions([]);
     setEditPoints("");
     setEditEmployeeName("");
     setRewardEmployeeName("");
+    setRedemptionEmployeeName("");
     setRewardEmployeeDropdownOpen(false);
     setEmployeeDropdownOpen(false);
+    setRedemptionEmployeeDropdownOpen(false);
     setRewardActionsExpanded(false);
+    setRedemptionBusyId(null);
     setCustomerEditExpanded(false);
     setCustomerEditUnlocked(false);
     setCustomerPasswordInput("");
@@ -1154,6 +1218,92 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
       Alert.alert("Fehler", "Die Aktion konnte nicht bestätigt werden.");
     } finally {
       setAdminRewardBusy(null);
+    }
+  };
+
+  const handleAdminApproveRedemption = async (redemption: RewardRedemption) => {
+    if (!firebaseUser?.isAdmin || !selectedCustomer) return;
+
+    if (!redemptionEmployeeName.trim()) {
+      Alert.alert(
+        "Mitarbeiter auswählen",
+        "Bitte Mitarbeiter auswählen, der die Einlösung bestätigt."
+      );
+      return;
+    }
+
+    if (redemption.status === "approved") {
+      Alert.alert("Bereits bestätigt", "Diese Prämie wurde schon eingelöst.");
+      return;
+    }
+    if (redemptionBusyId === redemption.id) return;
+
+    const employee = redemptionEmployeeName.trim();
+    let updatedPoints: number | null = null;
+
+    setRedemptionBusyId(redemption.id);
+    try {
+      await runTransaction(db, async (tx) => {
+        const userRef = doc(db, "users", selectedCustomer.id);
+        const userSnap = await tx.get(userRef);
+        if (!userSnap.exists()) {
+          throw new Error("user_not_found");
+        }
+
+        const currentPoints =
+          typeof userSnap.data().points === "number"
+            ? userSnap.data().points
+            : 0;
+
+        if (currentPoints < redemption.pointsRequired) {
+          throw new Error("not_enough_points");
+        }
+
+        updatedPoints = currentPoints - redemption.pointsRequired;
+
+        const redemptionRef = doc(
+          collection(userRef, "rewardRedemptions"),
+          redemption.id
+        );
+        tx.update(userRef, { points: updatedPoints });
+        tx.update(redemptionRef, {
+          status: "approved",
+          approvedAt: serverTimestamp(),
+          employeeName: employee,
+        });
+        const visitRef = doc(collection(userRef, "visits"));
+        tx.set(visitRef, {
+          createdAt: serverTimestamp(),
+          amount: null,
+          points: -redemption.pointsRequired,
+          reason: `Prämie eingelöst: ${redemption.title}`,
+          source: "reward-redemption",
+          employeeName: employee,
+        });
+      });
+
+      setSelectedCustomer((prev) =>
+        prev && updatedPoints !== null ? { ...prev, points: updatedPoints } : prev
+      );
+      if (selectedCustomer.id === firebaseUser.uid && updatedPoints !== null) {
+        setPoints(updatedPoints);
+      }
+
+      Alert.alert(
+        "Prämie bestätigt",
+        `${redemption.title} wurde bestätigt und Punkte wurden abgezogen.`
+      );
+    } catch (err: any) {
+      if (err?.message === "not_enough_points") {
+        Alert.alert("Zu wenig Punkte", "Der Kunde hat nicht genug Punkte.");
+      } else if (err?.message === "user_not_found") {
+        Alert.alert("Fehler", "Kunde nicht gefunden.");
+      } else {
+        console.error("Fehler beim Bestätigen der Prämie:", err);
+        Alert.alert("Fehler", "Die Prämie konnte nicht bestätigt werden.");
+      }
+    } finally {
+      setRedemptionBusyId(null);
     }
   };
 
@@ -1862,6 +2012,117 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                         >
                           <Text style={styles.primaryButtonText}>Punkte speichern</Text>
                         </TouchableOpacity>
+                      </View>
+                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                        <Text style={styles.sectionTitle}>Prämien-Einlösungen</Text>
+                        <Text style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                          Anfragen aus der Rewards-Seite. Nach Bestätigung werden Punkte
+                          abgezogen und die Historie ergänzt.
+                        </Text>
+
+                        <Text style={[styles.loginLabel, { marginTop: 10 }]}>
+                          Mitarbeiter/in
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.dropdownTrigger}
+                          onPress={() =>
+                            setRedemptionEmployeeDropdownOpen((prev) => !prev)
+                          }
+                        >
+                          <Text style={styles.dropdownTriggerText}>
+                            {redemptionEmployeeName || "Mitarbeiter auswählen"}
+                          </Text>
+                          <Text style={styles.dropdownChevron}>
+                            {redemptionEmployeeDropdownOpen ? "▼" : "▶"}
+                          </Text>
+                        </TouchableOpacity>
+                        {redemptionEmployeeDropdownOpen && (
+                          <View style={styles.dropdownList}>
+                            {EMPLOYEE_NAMES.map((name) => (
+                              <TouchableOpacity
+                                key={name}
+                                style={[
+                                  styles.dropdownItem,
+                                  redemptionEmployeeName === name &&
+                                    styles.dropdownItemActive,
+                                ]}
+                                onPress={() => {
+                                  setRedemptionEmployeeName(name);
+                                  setRedemptionEmployeeDropdownOpen(false);
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.dropdownItemText,
+                                    redemptionEmployeeName === name &&
+                                      styles.dropdownItemTextActive,
+                                  ]}
+                                >
+                                  {name}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+
+                        {selectedCustomerRedemptions.length === 0 ? (
+                          <Text style={[styles.emptyText, { marginTop: 10 }]}>
+                            Keine Anfragen vorhanden.
+                          </Text>
+                        ) : (
+                          selectedCustomerRedemptions.map((r) => {
+                            const busy = redemptionBusyId === r.id;
+                            const pending = r.status !== "approved";
+                            return (
+                              <View key={r.id} style={styles.redemptionCard}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.redemptionTitle}>{r.title}</Text>
+                                  <Text style={styles.redemptionMeta}>
+                                    {r.pointsRequired} P
+                                    {r.createdAt ? ` • ${r.createdAt}` : ""}
+                                  </Text>
+                                </View>
+                                <View style={{ alignItems: "flex-end" }}>
+                                  <View
+                                    style={[
+                                      styles.statusChip,
+                                      pending
+                                        ? styles.statusChipPending
+                                        : styles.statusChipDone,
+                                    ]}
+                                  >
+                                    <Text style={styles.statusChipText}>
+                                      {pending ? "Offen" : "Bestätigt"}
+                                    </Text>
+                                  </View>
+                                  {pending ? (
+                                    <TouchableOpacity
+                                      style={[
+                                        styles.adminActionButton,
+                                        styles.actionButton,
+                                        { marginTop: 8 },
+                                        (busy || !redemptionEmployeeName.trim()) &&
+                                          styles.actionButtonDisabled,
+                                      ]}
+                                      disabled={busy || !redemptionEmployeeName.trim()}
+                                      onPress={() => handleAdminApproveRedemption(r)}
+                                    >
+                                      <Text style={styles.primaryButtonText}>
+                                        {busy ? "Bitte warten..." : "Bestätigen"}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  ) : (
+                                    <Text style={styles.redemptionApproved}>
+                                      {r.employeeName
+                                        ? `Bestätigt durch ${r.employeeName}`
+                                        : "Bestätigt"}
+                                    </Text>
+                                  )}
+                                </View>
+                              </View>
+                            );
+                          })
+                        )}
                       </View>
                       <View style={[styles.pointsCard, { marginTop: 20 }]}>
                         <TouchableOpacity
@@ -2646,6 +2907,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     color: "#5c4632",
+  },
+  redemptionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#eaded1",
+  },
+  redemptionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  redemptionMeta: {
+    fontSize: 12,
+    color: "#777",
+    marginTop: 4,
+  },
+  redemptionApproved: {
+    fontSize: 11,
+    color: "#256029",
+    marginTop: 6,
+    textAlign: "right",
   },
   secondaryButton: {
     borderWidth: 1,

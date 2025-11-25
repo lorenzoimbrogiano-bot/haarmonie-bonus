@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -9,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../src/firebaseConfig";
 
 type Reward = {
   id: string;
@@ -55,6 +58,7 @@ export default function RewardsScreen() {
 
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
 
   const orderedRewards = useMemo(
     () => [...REWARDS].sort((a, b) => a.pointsRequired - b.pointsRequired),
@@ -78,12 +82,43 @@ export default function RewardsScreen() {
 
   const closeModal = () => setSelectedReward(null);
 
-  const confirmClaim = () => {
+  const confirmClaim = async () => {
     if (!selectedReward) return;
-    setFeedback(
-      `Prämie "${selectedReward.title}" vorgemerkt. Bitte im Salon zeigen.`
-    );
-    setSelectedReward(null);
+    const user = auth.currentUser;
+    if (!user?.uid) {
+      Alert.alert("Anmeldung erforderlich", "Bitte melde dich erneut an.");
+      return;
+    }
+
+    setClaimingId(selectedReward.id);
+    try {
+      const redemptionsRef = collection(
+        db,
+        "users",
+        user.uid,
+        "rewardRedemptions"
+      );
+      await addDoc(redemptionsRef, {
+        rewardId: selectedReward.id,
+        title: selectedReward.title,
+        pointsRequired: selectedReward.pointsRequired,
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+
+      setFeedback(
+        `Prämie "${selectedReward.title}" angefragt. Bitte im Salon bestätigen lassen.`
+      );
+      setSelectedReward(null);
+    } catch (err) {
+      console.error("Fehler beim Anfragen der Prämie:", err);
+      Alert.alert(
+        "Fehler",
+        "Die Prämie konnte nicht angefragt werden. Bitte später erneut versuchen."
+      );
+    } finally {
+      setClaimingId(null);
+    }
   };
 
   return (
@@ -239,11 +274,16 @@ export default function RewardsScreen() {
                 <Text style={styles.modalButtonText}>Abbrechen</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalConfirm]}
+                style={[
+                  styles.modalButton,
+                  styles.modalConfirm,
+                  claimingId === selectedReward?.id && { opacity: 0.7 },
+                ]}
+                disabled={claimingId === selectedReward?.id}
                 onPress={confirmClaim}
               >
                 <Text style={[styles.modalButtonText, { color: "#fff" }]}>
-                  Bestätigen
+                  {claimingId === selectedReward?.id ? "Sende..." : "Bestätigen"}
                 </Text>
               </TouchableOpacity>
             </View>
