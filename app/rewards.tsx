@@ -38,7 +38,7 @@ const REWARDS: Reward[] = [
   {
     id: "luxus",
     title: "Luxus-Verwöhnmoment",
-    description: "Exklusive Verwöhnbehandlung – nur für Stammkund:innen.",
+    description: "Exklusive Verwöhnbehandlung – für Stammkund:innen.",
     pointsRequired: 600,
   },
 ];
