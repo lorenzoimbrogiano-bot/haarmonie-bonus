@@ -1627,7 +1627,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                           >
                             <Text style={styles.primaryButtonText}>
                               {claimed
-                                ? "Bereits eingel?st"
+                                ? "Bereits eingelöst"
                                 : pending
                                 ? "In Prüfung"
                                 : busy
