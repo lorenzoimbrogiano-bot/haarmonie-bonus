@@ -1,0 +1,50 @@
+sortedRewardActions.map((action) => {
+                              const status = selectedCustomerRewardClaims[action.id];
+                              const claimed = status === true;
+                              const pending = status === "pending";
+                              const busy = adminRewardBusy === action.id;
+                              const disabled = claimed || busy || !pending;
+                              const approveLabel = claimed
+                                ? "Schon gutgeschrieben"
+                                : busy
+                                ? "Bitte warten..."
+                                : pending
+                                ? "Bestätigen & Punkte geben"
+                                : "Noch nicht angefragt";
+                              return (
+                                <View key={action.id} style={{ marginBottom: 12 }}>
+                                  <Text style={styles.actionTitle}>{action.title}</Text>
+                                  <Text style={styles.actionDescription}>{action.description}</Text>
+                                  <Text style={styles.actionPoints}>+{action.points} Punkte</Text>
+                              <TouchableOpacity
+                                style={[
+                                  styles.adminActionButton,
+                                  styles.actionButton,
+                                  pending && styles.adminActionButtonPending,
+                                      disabled && styles.actionButtonDisabled,
+                                      { marginTop: 6 },
+                                    ]}
+                                    disabled={disabled}
+                                    onPress={() => handleAdminApproveRewardAction(action)}
+                                  >
+                                <Text style={styles.primaryButtonText}>
+                                      {approveLabel}
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                              );
+                            )}
+                          </>
+                        )}
+                      </View>
+
+                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                        <TouchableOpacity
+                          style={styles.accordionHeader}
+                          onPress={() =>
+                            setRewardActionsManageExpanded((prev) => !prev)
+                          }
+                        >
+                          <Text style={styles.sectionTitle}>Pr��mien-Aktionen verwalten</Text>
+                          <Text style={styles.accordionChevron}>
+                            {

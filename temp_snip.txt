@@ -1,0 +1,110 @@
+              {rewardActionsLoading && visibleRewardActions.length === 0 ? (
+                <ActivityIndicator style={{ marginTop: 8 }} />
+              ) : visibleRewardActions.length === 0 ? (
+                <Text style={styles.emptyText}>Keine Aktionen verf��gbar.</Text>
+              ) : (
+                visibleRewardActions.map((action) => {
+                const status = rewardClaims[action.id];
+                const claimed = status === true;
+                const pending = status === "pending";
+                const busy = rewardClaimBusy === action.id;
+                const isExpanded = rewardExpandedId === action.id;
+
+                const statusLabel = claimed
+                  ? "Eingelöst"
+                  : pending
+                  ? "In Prüfung"
+                  : "Offen";
+
+                return (
+                  <View key={action.id} style={styles.actionCard}>
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                      onPress={() =>
+                        setRewardExpandedId((prev) =>
+                          prev === action.id ? null : action.id
+                        )
+                      }
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.actionTitle}>{action.title}</Text>
+                        <Text style={styles.actionPoints}>+{action.points} Punkte</Text>
+                      </View>
+                      <View style={{ alignItems: "flex-end" }}>
+                        <View
+                          style={[
+                            styles.statusChip,
+                            claimed
+                              ? styles.statusChipDone
+                              : pending
+                              ? styles.statusChipPending
+                              : styles.statusChipOpen,
+                          ]}
+                        >
+                          <Text style={styles.statusChipText}>{statusLabel}</Text>
+                        </View>
+                        <Text style={styles.dropdownChevron}>
+                          {isExpanded ? "▼" : "▶"}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {isExpanded && (
+                      <>
+                        <Text style={[styles.actionDescription, { marginTop: 6 }]}>
+                          {action.description}
+                        </Text>
+                        {pending && (
+                          <Text style={styles.actionPending}>
+                            In Prüfung - zeige die Bewertung im Salon, damit wir sie freischalten.
+                          </Text>
+                        )}
+                        <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                          {action.url ? (
+                            <TouchableOpacity
+                              style={[styles.secondaryButton, { flex: 1 }]}
+                              onPress={() => openRewardLink(action)}
+                            >
+                              <Text style={styles.secondaryButtonText}>Link öffnen</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                          <TouchableOpacity
+                            style={[
+                              styles.primaryButton,
+                              styles.actionButton,
+                              { flex: 1 },
+                              (claimed || busy || pending) && styles.actionButtonDisabled,
+                            ]}
+                            disabled={claimed || busy || pending}
+                            onPress={() => handleClaimRewardAction(action)}
+                          >
+                            <Text style={styles.primaryButtonText}>
+                              {claimed
+                                ? "Bereits eingelöst"
+                                : pending
+                                ? "In Prüfung"
+                                : busy
+                                ? "Bitte warten"
+                                : "Punkte anfragen"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                );
+              })}
+            )}
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Deine Besuche</Text>
+
+              {visitHistory.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  Noch keine Buchungen vorhanden.
+                </Text>
+              ) : (

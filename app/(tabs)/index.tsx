@@ -7,7 +7,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import LottieView from "lottie-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -70,6 +70,36 @@ const EXPORT_PASSWORD = "MiaLina&76429074";
 const CLOUD_FUNCTION_PUSH_URL =
   "https://hellohaarmonie-cz1lyrucwa-uc.a.run.app"; // TODO: ersetzen
 
+const DEFAULT_REWARD_ACTIONS: RewardAction[] = [
+  {
+    id: "google-review",
+    title: "5-Sterne Google Bewertung",
+    description: "Bewerte uns mit 5 Sternen auf Google und erhalte",
+    points: 50,
+    url: "https://g.page/r/Cf0hqXnNeVkAEAE/review",
+    active: true,
+    order: 1,
+  },
+  {
+    id: "facebook-follow",
+    title: "Facebook folgen",
+    description: "Folge uns auf Facebook und erhalte",
+    points: 30,
+    url: "https://www.facebook.com/haarmoniebycynthia",
+    active: true,
+    order: 2,
+  },
+  {
+    id: "instagram-follow",
+    title: "Instagram folgen",
+    description: "Folge uns auf Instagram und erhalte",
+    points: 30,
+    url: "https://www.instagram.com/haarmonie_by_cynthia",
+    active: true,
+    order: 3,
+  },
+];
+
 type Visit = {
   id: string;
   date: string;
@@ -98,6 +128,10 @@ type RewardAction = {
   description: string;
   points: number;
   url?: string;
+  active?: boolean;
+  order?: number;
+  startDate?: string;
+  endDate?: string;
 };
 
 type RewardRedemption = {
@@ -109,30 +143,6 @@ type RewardRedemption = {
   createdAt?: string;
   employeeName?: string;
 };
-
-const REWARD_ACTIONS: RewardAction[] = [
-  {
-    id: "google-review",
-    title: "5-Sterne Google Bewertung",
-    description: "Bewerte uns mit 5 Sternen auf Google und erhalte",
-    points: 50,
-    url: "https://g.page/r/Cf0hqXnNeVkAEAE/review",
-  },
-  {
-    id: "facebook-follow",
-    title: "Facebook folgen",
-    description: "Folge uns auf Facebook und erhalte",
-    points: 30,
-    url: "https://www.facebook.com/haarmoniebycynthia",
-  },
-  {
-    id: "instagram-follow",
-    title: "Instagram folgen",
-    description: "Folge uns auf Instagram und erhalte",
-    points: 30,
-    url: "https://www.instagram.com/haarmonie_by_cynthia",
-  },
-];
 
 // >>> Prämienliste <<<
 export default function BonusApp() {
@@ -171,6 +181,21 @@ export default function BonusApp() {
   const [rewardClaims, setRewardClaims] = useState<Record<string, string | boolean>>({});
   const [rewardClaimBusy, setRewardClaimBusy] = useState<string | null>(null);
   const [rewardExpandedId, setRewardExpandedId] = useState<string | null>(null);
+  const [rewardActions, setRewardActions] = useState<RewardAction[]>([]);
+  const [rewardActionsLoading, setRewardActionsLoading] = useState(false);
+  const [rewardActionsBusyId, setRewardActionsBusyId] = useState<string | null>(null);
+  const [rewardActionTitle, setRewardActionTitle] = useState("");
+  const [rewardActionDescription, setRewardActionDescription] = useState("");
+  const [rewardActionPoints, setRewardActionPoints] = useState("");
+  const [rewardActionUrl, setRewardActionUrl] = useState("");
+  const [rewardActionOrder, setRewardActionOrder] = useState("");
+  const [rewardActionStartDate, setRewardActionStartDate] = useState("");
+  const [rewardActionEndDate, setRewardActionEndDate] = useState("");
+  const [rewardActionActive, setRewardActionActive] = useState(true);
+  const [editingRewardActionId, setEditingRewardActionId] = useState<string | null>(null);
+  const [rewardActionsExpanded, setRewardActionsExpanded] = useState(false);
+  const [rewardActionsManageExpanded, setRewardActionsManageExpanded] = useState(false);
+  const hasSeededRewardActions = useRef(false);
   const [selectedCustomerRewardClaims, setSelectedCustomerRewardClaims] = useState<
     Record<string, string | boolean>
   >({});
@@ -194,7 +219,6 @@ export default function BonusApp() {
   const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
   const [rewardEmployeeName, setRewardEmployeeName] = useState("");
   const [rewardEmployeeDropdownOpen, setRewardEmployeeDropdownOpen] = useState(false);
-  const [rewardActionsExpanded, setRewardActionsExpanded] = useState(false);
   const [redemptionsExpanded, setRedemptionsExpanded] = useState(false);
   const [editCustomerName, setEditCustomerName] = useState<string>("");
   const [editCustomerEmail, setEditCustomerEmail] = useState<string>("");
@@ -439,6 +463,57 @@ useEffect(() => {
 
     return () => unsubUser();
   }, [firebaseUser]);
+
+  // -----------------------------------
+  // Reward-Aktionen laden (Firestore)
+  // -----------------------------------
+  useEffect(() => {
+    const actionsRef = collection(db, "rewardActions");
+    const qActions = query(
+      actionsRef,
+      orderBy("order", "asc"),
+      orderBy("createdAt", "desc")
+    );
+
+    setRewardActionsLoading(true);
+    const unsub = onSnapshot(
+      qActions,
+      async (snap) => {
+        const list: RewardAction[] = [];
+        snap.forEach((docSnap) => {
+          const d = docSnap.data() as any;
+          list.push({
+            id: docSnap.id,
+            title: d.title || "",
+            description: d.description || "",
+            points: typeof d.points === "number" ? d.points : 0,
+            url: typeof d.url === "string" ? d.url : "",
+            active: d.active !== false,
+            order: typeof d.order === "number" ? d.order : undefined,
+            startDate: typeof d.startDate === "string" ? d.startDate : undefined,
+            endDate: typeof d.endDate === "string" ? d.endDate : undefined,
+          });
+        });
+        setRewardActions(list);
+        setRewardActionsLoading(false);
+
+        if (snap.empty && !hasSeededRewardActions.current) {
+          hasSeededRewardActions.current = true;
+          try {
+            await seedDefaultRewardActions(actionsRef);
+          } catch (err) {
+            console.error("Seed Reward-Aktionen fehlgeschlagen:", err);
+          }
+        }
+      },
+      (err) => {
+        console.error("Reward-Aktionen konnten nicht geladen werden:", err);
+        setRewardActionsLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, []);
 
   // -----------------------------------
   // Live-Updates für Besuchshistorie
@@ -904,6 +979,25 @@ const registerForPushNotificationsAsync = async (uid: string) => {
     }
   }, [firebaseUser?.uid]);
 
+  const seedDefaultRewardActions = async (actionsRef: any) => {
+    const now = new Date().toISOString();
+    await Promise.all(
+      DEFAULT_REWARD_ACTIONS.map((action, index) =>
+        setDoc(doc(actionsRef, action.id), {
+          title: action.title,
+          description: action.description,
+          points: action.points,
+          url: action.url || "",
+          active: action.active !== false,
+          order: action.order ?? index + 1,
+          startDate: action.startDate || now,
+          endDate: action.endDate || "",
+          createdAt: serverTimestamp(),
+        })
+      )
+    );
+  };
+
   const handleRequestPushAccess = () => {
     if (pushSectionExpanded) {
       setPushSectionExpanded(false);
@@ -1136,7 +1230,153 @@ const handleSaveCustomerPoints = async () => {
     );
   };
 
-const handleAdminApproveRewardAction = async (action: RewardAction) => {
+  const isActionActiveForNow = (action: RewardAction) => {
+    if (action.active === false) return false;
+    const now = new Date();
+
+    const startsOk =
+      !action.startDate ||
+      Number.isNaN(Date.parse(action.startDate)) ||
+      new Date(action.startDate) <= now;
+    const endsOk =
+      !action.endDate ||
+      Number.isNaN(Date.parse(action.endDate)) ||
+      new Date(action.endDate) >= now;
+
+    return startsOk && endsOk;
+  };
+
+  const resetRewardActionForm = () => {
+    setRewardActionTitle("");
+    setRewardActionDescription("");
+    setRewardActionPoints("");
+    setRewardActionUrl("");
+    setRewardActionOrder("");
+    setRewardActionStartDate("");
+    setRewardActionEndDate("");
+    setRewardActionActive(true);
+    setEditingRewardActionId(null);
+  };
+
+  const handleEditRewardAction = (action: RewardAction) => {
+    setEditingRewardActionId(action.id);
+    setRewardActionTitle(action.title);
+    setRewardActionDescription(action.description);
+    setRewardActionPoints(String(action.points));
+    setRewardActionUrl(action.url || "");
+    setRewardActionOrder(
+      typeof action.order === "number" ? String(action.order) : ""
+    );
+    setRewardActionStartDate(action.startDate || "");
+    setRewardActionEndDate(action.endDate || "");
+    setRewardActionActive(action.active !== false);
+    setRewardActionsExpanded(true);
+  };
+
+  const handleSaveRewardAction = async () => {
+    if (!firebaseUser?.isAdmin) return;
+
+    const title = rewardActionTitle.trim();
+    const description = rewardActionDescription.trim();
+    const url = rewardActionUrl.trim();
+    const order = rewardActionOrder.trim()
+      ? Number.parseInt(rewardActionOrder.trim(), 10)
+      : 0;
+    const points = Number.parseInt(rewardActionPoints.trim(), 10);
+    const startDate = rewardActionStartDate.trim();
+    const endDate = rewardActionEndDate.trim();
+
+    if (!title || !description) {
+      Alert.alert("Angaben fehlen", "Bitte Titel und Beschreibung ausfüllen.");
+      return;
+    }
+    if (!Number.isFinite(points) || points <= 0) {
+      Alert.alert("Punkte prüfen", "Bitte eine Punktzahl größer 0 angeben.");
+      return;
+    }
+
+    try {
+      setRewardActionsBusyId(editingRewardActionId || "new");
+      const payload: any = {
+        title,
+        description,
+        points,
+        url,
+        active: rewardActionActive,
+        order,
+        startDate,
+        endDate,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (editingRewardActionId) {
+        const ref = doc(db, "rewardActions", editingRewardActionId);
+        await updateDoc(ref, payload);
+      } else {
+        await addDoc(collection(db, "rewardActions"), {
+          ...payload,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      resetRewardActionForm();
+      setRewardActionsExpanded(true);
+      Alert.alert("Gespeichert", "Prämien-Aktion wurde gespeichert.");
+    } catch (err) {
+      console.error("Reward-Aktion speichern fehlgeschlagen:", err);
+      Alert.alert("Fehler", "Die Aktion konnte nicht gespeichert werden.");
+    } finally {
+      setRewardActionsBusyId(null);
+    }
+  };
+
+  const handleDeleteRewardAction = async (actionId: string) => {
+    if (!firebaseUser?.isAdmin || !actionId) return;
+    Alert.alert(
+      "Aktion l��schen",
+      "M��chtest du diese Pr��mien-Aktion wirklich l��schen?",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "L��schen",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setRewardActionsBusyId(actionId);
+              const ref = doc(db, "rewardActions", actionId);
+              await deleteDoc(ref);
+              if (editingRewardActionId === actionId) {
+                resetRewardActionForm();
+              }
+            } catch (err) {
+              console.error("Aktion l��schen fehlgeschlagen:", err);
+              Alert.alert("Fehler", "Die Aktion konnte nicht gel��scht werden.");
+            } finally {
+              setRewardActionsBusyId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleToggleRewardActionActive = async (action: RewardAction) => {
+    if (!firebaseUser?.isAdmin) return;
+    const currentActive = action.active !== false;
+    const nextActive = !currentActive;
+    try {
+      setRewardActionsBusyId(action.id);
+      const ref = doc(db, "rewardActions", action.id);
+      await updateDoc(ref, { active: nextActive });
+    } catch (err) {
+      console.error("Aktiv-Status ��ndern fehlgeschlagen:", err);
+      Alert.alert("Fehler", "Status konnte nicht ge��ndert werden.");
+    } finally {
+      setRewardActionsBusyId(null);
+    }
+  };
+
+  const handleAdminApproveRewardAction = async (action: RewardAction) => {
     if (!firebaseUser?.isAdmin || !selectedCustomer) return;
 
     if (!rewardEmployeeName.trim()) {
@@ -1315,6 +1555,13 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
 
   const handleClaimRewardAction = async (action: RewardAction) => {
     if (!firebaseUser) return;
+    if (!isActionActiveForNow(action)) {
+      Alert.alert(
+        "Aktion nicht verf��gbar",
+        "Diese Aktion ist aktuell nicht freigeschaltet."
+      );
+      return;
+    }
     const status = rewardClaims[action.id];
     if (status === true) {
       Alert.alert("Schon eingelöst", "Diese Aktion wurde bereits bestätigt.");
@@ -1630,6 +1877,11 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
     );
   });
 
+  const sortedRewardActions = [...rewardActions].sort(
+    (a, b) => (a.order ?? 9999) - (b.order ?? 9999)
+  );
+  const visibleRewardActions = sortedRewardActions.filter(isActionActiveForNow);
+
   const pendingRedemptions = selectedCustomerRedemptions.filter(
     (r) => r.status !== "approved"
   );
@@ -1792,7 +2044,12 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Prämien-Aktionen</Text>
-              {REWARD_ACTIONS.map((action) => {
+              {rewardActionsLoading && visibleRewardActions.length === 0 ? (
+                <ActivityIndicator style={{ marginTop: 8 }} />
+              ) : visibleRewardActions.length === 0 ? (
+                <Text style={styles.emptyText}>Keine Aktionen verf��gbar.</Text>
+              ) : (
+                visibleRewardActions.map((action) => {
                 const status = rewardClaims[action.id];
                 const claimed = status === true;
                 const pending = status === "pending";
@@ -1886,7 +2143,7 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                     )}
                   </View>
                 );
-              })}
+              }))}
             </View>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Deine Besuche</Text>
@@ -2255,42 +2512,276 @@ const handleAdminApproveRewardAction = async (action: RewardAction) => {
                               </View>
                             )}
 
-                            {REWARD_ACTIONS.map((action) => {
-                              const status = selectedCustomerRewardClaims[action.id];
-                              const claimed = status === true;
-                              const pending = status === "pending";
-                              const busy = adminRewardBusy === action.id;
-                              const disabled = claimed || busy || !pending;
-                              const approveLabel = claimed
-                                ? "Schon gutgeschrieben"
-                                : busy
-                                ? "Bitte warten..."
-                                : pending
-                                ? "Bestätigen & Punkte geben"
-                                : "Noch nicht angefragt";
-                              return (
-                                <View key={action.id} style={{ marginBottom: 12 }}>
-                                  <Text style={styles.actionTitle}>{action.title}</Text>
-                                  <Text style={styles.actionDescription}>{action.description}</Text>
-                                  <Text style={styles.actionPoints}>+{action.points} Punkte</Text>
-                                  <TouchableOpacity
+                            {rewardActionsLoading && sortedRewardActions.length === 0 ? (
+                              <ActivityIndicator style={{ marginTop: 10 }} />
+                            ) : sortedRewardActions.length === 0 ? (
+                              <Text style={[styles.emptyText, { marginTop: 8 }]}>
+                                Keine Aktionen vorhanden.
+                              </Text>
+                            ) : (
+                              sortedRewardActions.map((action) => {
+                                const status = selectedCustomerRewardClaims[action.id];
+                                const claimed = status === true;
+                                const pending = status === "pending";
+                                const busy = adminRewardBusy === action.id;
+                                const disabled = claimed || busy || !pending;
+                                const approveLabel = claimed
+                                  ? "Schon gutgeschrieben"
+                                  : busy
+                                  ? "Bitte warten..."
+                                  : pending
+                                  ? "Best?tigen & Punkte geben"
+                                  : "Noch nicht angefragt";
+
+                                return (
+                                  <View key={action.id} style={{ marginBottom: 12 }}>
+                                    <Text style={styles.actionTitle}>{action.title}</Text>
+                                    <Text style={styles.actionDescription}>{action.description}</Text>
+                                    <Text style={styles.actionPoints}>+{action.points} Punkte</Text>
+                                    <TouchableOpacity
+                                      style={[
+                                        styles.adminActionButton,
+                                        styles.actionButton,
+                                        pending && styles.adminActionButtonPending,
+                                        disabled && styles.actionButtonDisabled,
+                                        { marginTop: 6 },
+                                      ]}
+                                      disabled={disabled}
+                                      onPress={() => handleAdminApproveRewardAction(action)}
+                                    >
+                                      <Text style={styles.primaryButtonText}>{approveLabel}</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                );
+                              })
+                            )}
+                          </>
+                        )}
+                      </View>
+
+                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                        <TouchableOpacity
+                          style={styles.accordionHeader}
+                          onPress={() =>
+                            setRewardActionsManageExpanded((prev) => !prev)
+                          }
+                        >
+                          <Text style={styles.sectionTitle}>Prämien-Aktionen verwalten</Text>
+                          <Text style={styles.accordionChevron}>
+                            {rewardActionsManageExpanded ? "\u25BC" : "\u25B6"}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {rewardActionsManageExpanded && (
+                          <>
+                            <Text style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>
+                              Aktionen werden in der Kundensicht angezeigt, wenn sie aktiv
+                              und im Start/Endzeitraum liegen.
+                            </Text>
+
+                            <Text style={styles.loginLabel}>Titel</Text>
+                            <TextInput
+                              style={styles.loginInput}
+                              value={rewardActionTitle}
+                              onChangeText={setRewardActionTitle}
+                              placeholder="z. B. 5-Sterne Bewertung"
+                            />
+
+                            <Text style={styles.loginLabel}>Beschreibung</Text>
+                            <TextInput
+                              style={[styles.loginInput, { height: 70 }]}
+                              value={rewardActionDescription}
+                              onChangeText={setRewardActionDescription}
+                              placeholder="Kurzbeschreibung"
+                              multiline
+                            />
+
+                            <Text style={styles.loginLabel}>Punkte</Text>
+                            <TextInput
+                              style={styles.loginInput}
+                              value={rewardActionPoints}
+                              onChangeText={setRewardActionPoints}
+                              placeholder="z. B. 50"
+                              keyboardType="number-pad"
+                            />
+
+                            <Text style={styles.loginLabel}>Link (optional)</Text>
+                            <TextInput
+                              style={styles.loginInput}
+                              value={rewardActionUrl}
+                              onChangeText={setRewardActionUrl}
+                              placeholder="https://..."
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                            />
+
+                            <Text style={styles.loginLabel}>Sortierung (Order)</Text>
+                            <TextInput
+                              style={styles.loginInput}
+                              value={rewardActionOrder}
+                              onChangeText={setRewardActionOrder}
+                              placeholder="1 = oben"
+                              keyboardType="number-pad"
+                            />
+
+                            <View style={{ flexDirection: "row", gap: 10 }}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.loginLabel}>Startdatum (YYYY-MM-DD)</Text>
+                                <TextInput
+                                  style={styles.loginInput}
+                                  value={rewardActionStartDate}
+                                  onChangeText={setRewardActionStartDate}
+                                  placeholder="z. B. 2025-12-01"
+                                  autoCapitalize="none"
+                                  autoCorrect={false}
+                                />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.loginLabel}>Enddatum (optional)</Text>
+                                <TextInput
+                                  style={styles.loginInput}
+                                  value={rewardActionEndDate}
+                                  onChangeText={setRewardActionEndDate}
+                                  placeholder="z. B. 2025-12-31"
+                                  autoCapitalize="none"
+                                  autoCorrect={false}
+                                />
+                              </View>
+                            </View>
+
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                marginTop: 10,
+                              }}
+                            >
+                              <Text style={styles.loginLabel}>Aktiv</Text>
+                              <Switch
+                                value={rewardActionActive}
+                                onValueChange={setRewardActionActive}
+                                thumbColor={rewardActionActive ? "#c49a6c" : "#f4f3f4"}
+                                trackColor={{ false: "#ccc", true: "#f0e0cf" }}
+                              />
+                            </View>
+
+                            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                              <TouchableOpacity
+                                style={[
+                                  styles.primaryButton,
+                                  { flex: 1, opacity: rewardActionsBusyId ? 0.7 : 1 },
+                                ]}
+                                onPress={handleSaveRewardAction}
+                                disabled={!!rewardActionsBusyId}
+                              >
+                                <Text style={styles.primaryButtonText}>
+                                  {rewardActionsBusyId
+                                    ? "Bitte warten..."
+                                    : editingRewardActionId
+                                    ? "Änderungen speichern"
+                                    : "Aktion speichern"}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.secondaryButton, { flex: 1 }]}
+                                onPress={resetRewardActionForm}
+                                disabled={!!rewardActionsBusyId}
+                              >
+                                <Text style={styles.secondaryButtonText}>Zur��cksetzen</Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>
+                              Bestehende Aktionen
+                            </Text>
+                            {sortedRewardActions.length === 0 ? (
+                              <Text style={styles.emptyText}>Keine Aktionen gespeichert.</Text>
+                            ) : (
+                              sortedRewardActions.map((action) => {
+                                const active = action.active !== false;
+                                return (
+                                  <View
+                                    key={action.id}
                                     style={[
-                                      styles.adminActionButton,
-                                      styles.actionButton,
-                                      pending && styles.adminActionButtonPending,
-                                      disabled && styles.actionButtonDisabled,
-                                      { marginTop: 6 },
+                                      styles.redemptionCard,
+                                      { alignItems: "flex-start" },
                                     ]}
-                                    disabled={disabled}
-                                    onPress={() => handleAdminApproveRewardAction(action)}
                                   >
-                                    <Text style={styles.primaryButtonText}>
-                                      {approveLabel}
-                                    </Text>
-                                  </TouchableOpacity>
-                                </View>
-                              );
-                            })}
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={styles.redemptionTitle}>{action.title}</Text>
+                                      <Text style={styles.redemptionMeta}>
+                                        +{action.points} P
+                                        {action.order ? ` • Ordnung ${action.order}` : ""}
+                                        {action.startDate ? ` • Start ${action.startDate}` : ""}
+                                        {action.endDate ? ` • Ende ${action.endDate}` : ""}
+                                      </Text>
+                                      <Text style={styles.actionDescription}>
+                                        {action.description}
+                                      </Text>
+                                    </View>
+                                    <View style={{ alignItems: "flex-end" }}>
+                                      <Text
+                                        style={[
+                                          styles.statusChipText,
+                                          { color: active ? "#256029" : "#a87132" },
+                                        ]}
+                                      >
+                                        {active ? "Aktiv" : "Inaktiv"}
+                                      </Text>
+                                      <TouchableOpacity
+                                        style={[
+                                          styles.smallButton,
+                                          { marginTop: 6, paddingVertical: 6, paddingHorizontal: 10 },
+                                          rewardActionsBusyId === action.id &&
+                                            styles.actionButtonDisabled,
+                                        ]}
+                                        disabled={rewardActionsBusyId === action.id}
+                                        onPress={() => handleEditRewardAction(action)}
+                                      >
+                                        <Text style={styles.smallButtonText}>Bearbeiten</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        style={[
+                                          styles.smallButton,
+                                          {
+                                            marginTop: 6,
+                                            paddingVertical: 6,
+                                            paddingHorizontal: 10,
+                                            backgroundColor: active ? "#c0392b" : "#2e8b57",
+                                          },
+                                          rewardActionsBusyId === action.id &&
+                                            styles.actionButtonDisabled,
+                                        ]}
+                                        disabled={rewardActionsBusyId === action.id}
+                                        onPress={() => handleToggleRewardActionActive(action)}
+                                      >
+                                        <Text style={styles.smallButtonText}>
+                                          {active ? "Deaktivieren" : "Aktivieren"}
+                                        </Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        style={[
+                                          styles.smallButton,
+                                          {
+                                            marginTop: 6,
+                                            paddingVertical: 6,
+                                            paddingHorizontal: 10,
+                                            backgroundColor: "#c0392b",
+                                          },
+                                          rewardActionsBusyId === action.id &&
+                                            styles.actionButtonDisabled,
+                                        ]}
+                                        disabled={rewardActionsBusyId === action.id}
+                                        onPress={() => handleDeleteRewardAction(action.id)}
+                                      >
+                                        <Text style={styles.smallButtonText}>L��schen</Text>
+                                      </TouchableOpacity>
+                                    </View>
+                                  </View>
+                                );
+                              })
+                            )}
                           </>
                         )}
                       </View>
