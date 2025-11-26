@@ -1598,8 +1598,8 @@ const handleSaveCustomerPoints = async () => {
       }
 
       Alert.alert(
-        "Bitte Nachweis zeigen",
-        "Öffne den Link, erledige die Aktion und zeige uns den Nachweis im Salon. Ein Mitarbeiter schaltet die Punkte dann frei."
+        "In Prüfung",
+        "Bitte mit einem Salonmitarbeiter freischalten lassen"
       );
     } catch (err) {
       console.error("Fehler beim Setzen der Aktion auf pending:", err);
@@ -2111,7 +2111,7 @@ const handleSaveCustomerPoints = async () => {
                         </Text>
                         {pending && (
                           <Text style={styles.actionPending}>
-                            In Prüfung - zeige die Bewertung im Salon, damit wir sie freischalten.
+                            In Prüfung - Bitte mit einem Salonmitarbeiter freischalten lassen.
                           </Text>
                         )}
                         <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
@@ -2197,11 +2197,9 @@ const handleSaveCustomerPoints = async () => {
         {/* Admin-/Mitarbeiterbereich: Kunden verwalten */}
         {isAdmin && isAdminView && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              Kundenverwaltung (nur Mitarbeiter)
-            </Text>
+            <Text style={styles.sectionTitle}> </Text>
 
-            <View style={[styles.pointsCard, { marginTop: 10 }]}>
+            <View style={[styles.pointsCard, { marginTop: 1 }]}>
               <Text style={styles.sectionTitle}>Prämien-Aktionen verwalten</Text>
               <Text style={styles.modalText}>
                 neue Aktionen anlegen, bearbeiten oder löschen.
@@ -2635,7 +2633,7 @@ const handleSaveCustomerPoints = async () => {
                                   : busy
                                   ? "Bitte warten..."
                                   : pending
-                                  ? "Best?tigen & Punkte geben"
+                                  ? "Bestätigen & Punkte geben"
                                   : "Noch nicht angefragt";
 
                                 return (

@@ -60,7 +60,7 @@
                         </Text>
                         {pending && (
                           <Text style={styles.actionPending}>
-                            In Prüfung - zeige die Bewertung im Salon, damit wir sie freischalten.
+                            In Prüfung - Bitte mit einem Salonmitarbeiter freischalten lassen.
                           </Text>
                         )}
                         <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>

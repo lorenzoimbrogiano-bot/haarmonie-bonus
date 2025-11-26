@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
@@ -10,7 +11,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../src/firebaseConfig";
 
 type Reward = {
@@ -262,7 +262,7 @@ export default function RewardsScreen() {
               {selectedReward?.title}
             </Text>
             <Text style={styles.modalDescription}>
-              Zeige diese Bestätigung im Salon. Für diese Prämie werden{" "}
+              Für diese Prämie werden{" "}
               {selectedReward?.pointsRequired} Punkte verwendet.
             </Text>
 
