@@ -2199,7 +2199,7 @@ const handleSaveCustomerPoints = async () => {
             <View style={[styles.pointsCard, { marginTop: 10 }]}>
               <Text style={styles.sectionTitle}>Prämien-Aktionen verwalten</Text>
               <Text style={styles.modalText}>
-                Jetzt auf eigener Seite – auch ohne Kundenauswahl erreichbar.
+                neue Aktionen anlegen, bearbeiten oder löschen.
               </Text>
               <TouchableOpacity
                 style={[styles.primaryButton, { marginTop: 8 }]}
