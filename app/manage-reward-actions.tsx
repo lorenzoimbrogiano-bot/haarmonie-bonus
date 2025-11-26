@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   addDoc,
   collection,
@@ -67,6 +68,8 @@ export default function ManageRewardActions() {
   const [rewardActionEndDate, setRewardActionEndDate] = useState("");
   const [rewardActionActive, setRewardActionActive] = useState(true);
   const [editingRewardActionId, setEditingRewardActionId] = useState<string | null>(null);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -86,6 +89,8 @@ export default function ManageRewardActions() {
   }, [router]);
 
   useEffect(() => {
+    if (!authChecked || !isAdmin) return undefined;
+
     const actionsRef = collection(db, "rewardActions");
     const qActions = query(actionsRef, orderBy("order", "asc"), orderBy("createdAt", "desc"));
 
@@ -118,7 +123,7 @@ export default function ManageRewardActions() {
     );
 
     return () => unsub();
-  }, []);
+  }, [authChecked, isAdmin]);
 
   const sortedRewardActions = useMemo(
     () =>
@@ -127,6 +132,32 @@ export default function ManageRewardActions() {
       ),
     [rewardActions]
   );
+
+  const formatDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const parseDateOrToday = (value?: string) => {
+    const ts = value ? Date.parse(value) : Number.NaN;
+    return Number.isNaN(ts) ? new Date() : new Date(ts);
+  };
+
+  const handleStartDateChange = (_: any, selected?: Date) => {
+    setShowStartPicker(false);
+    if (selected) {
+      setRewardActionStartDate(formatDate(selected));
+    }
+  };
+
+  const handleEndDateChange = (_: any, selected?: Date) => {
+    setShowEndPicker(false);
+    if (selected) {
+      setRewardActionEndDate(formatDate(selected));
+    }
+  };
 
   const resetRewardActionForm = () => {
     setRewardActionTitle("");
@@ -369,26 +400,50 @@ export default function ManageRewardActions() {
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Startdatum (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.input}
-                value={rewardActionStartDate}
-                onChangeText={setRewardActionStartDate}
-                placeholder="z. B. 2025-12-01"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+              <Text style={styles.label}>Startdatum</Text>
+              <TouchableOpacity
+                style={[styles.input, styles.dateInput]}
+                onPress={() => setShowStartPicker(true)}
+              >
+                <Text style={styles.dropdownTriggerText}>
+                  {rewardActionStartDate ? rewardActionStartDate : "Startdatum wählen"}
+                </Text>
+              </TouchableOpacity>
+              {showStartPicker && (
+                <DateTimePicker
+                  value={parseDateOrToday(rewardActionStartDate)}
+                  mode="date"
+                  display="calendar"
+                  onChange={handleStartDateChange}
+                />
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>Enddatum (optional)</Text>
-              <TextInput
-                style={styles.input}
-                value={rewardActionEndDate}
-                onChangeText={setRewardActionEndDate}
-                placeholder="z. B. 2025-12-31"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+              <TouchableOpacity
+                style={[styles.input, styles.dateInput]}
+                onPress={() => setShowEndPicker(true)}
+              >
+                <Text style={styles.dropdownTriggerText}>
+                  {rewardActionEndDate ? rewardActionEndDate : "Enddatum wählen"}
+                </Text>
+              </TouchableOpacity>
+              {showEndPicker && (
+                <DateTimePicker
+                  value={parseDateOrToday(rewardActionEndDate)}
+                  mode="date"
+                  display="calendar"
+                  onChange={handleEndDateChange}
+                />
+              )}
+              {rewardActionEndDate ? (
+                <TouchableOpacity
+                  style={[styles.smallButton, { marginTop: 6, alignSelf: "flex-start" }]}
+                  onPress={() => setRewardActionEndDate("")}
+                >
+                  <Text style={styles.smallButtonText}>Enddatum entfernen</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </View>
 
@@ -558,6 +613,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: "#fff",
     fontSize: 14,
+  },
+  dateInput: {
+    justifyContent: "center",
   },
   switchRow: {
     flexDirection: "row",

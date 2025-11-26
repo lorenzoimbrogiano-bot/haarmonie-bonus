@@ -1,7 +1,7 @@
               {rewardActionsLoading && visibleRewardActions.length === 0 ? (
                 <ActivityIndicator style={{ marginTop: 8 }} />
               ) : visibleRewardActions.length === 0 ? (
-                <Text style={styles.emptyText}>Keine Aktionen verf��gbar.</Text>
+                <Text style={styles.emptyText}>Keine Aktionen verfügbar.</Text>
               ) : (
                 visibleRewardActions.map((action) => {
                 const status = rewardClaims[action.id];

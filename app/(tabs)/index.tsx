@@ -429,7 +429,7 @@ useEffect(() => {
   // Live-Updates für User-Daten
   // -----------------------------------
   useEffect(() => {
-    if (!firebaseUser) return undefined;
+    if (!firebaseUser?.uid) return undefined;
     const userRef = doc(db, "users", firebaseUser.uid);
 
     const unsubUser = onSnapshot(
@@ -462,12 +462,17 @@ useEffect(() => {
     );
 
     return () => unsubUser();
-  }, [firebaseUser]);
+  }, [firebaseUser?.uid]);
 
   // -----------------------------------
   // Reward-Aktionen laden (Firestore)
   // -----------------------------------
   useEffect(() => {
+    if (!firebaseUser) {
+      setRewardActions([]);
+      return undefined;
+    }
+
     const actionsRef = collection(db, "rewardActions");
     const qActions = query(
       actionsRef,
@@ -513,7 +518,7 @@ useEffect(() => {
     );
 
     return () => unsub();
-  }, []);
+  }, [firebaseUser]);
 
   // -----------------------------------
   // Live-Updates für Besuchshistorie
@@ -2047,7 +2052,7 @@ const handleSaveCustomerPoints = async () => {
               {rewardActionsLoading && visibleRewardActions.length === 0 ? (
                 <ActivityIndicator style={{ marginTop: 8 }} />
               ) : visibleRewardActions.length === 0 ? (
-                <Text style={styles.emptyText}>Keine Aktionen verf?gbar.</Text>
+                <Text style={styles.emptyText}>Keine Aktionen verfügbar.</Text>
               ) : (
                 visibleRewardActions.map((action) => {
                 const status = rewardClaims[action.id];
