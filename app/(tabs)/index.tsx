@@ -1032,11 +1032,11 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       return;
     }
     if (!pushTitle.trim() || !pushBody.trim()) {
-      Alert.alert("Angaben fehlen", "Bitte Titel und Nachricht ausf?llen.");
+      Alert.alert("Angaben fehlen", "Bitte Titel und Nachricht ausfüllen.");
       return;
     }
     if (pushTarget === "selected" && !selectedCustomer) {
-      Alert.alert("Kunde fehlt", "Bitte zuerst einen Kunden ausw?hlen.");
+      Alert.alert("Kunde fehlt", "Bitte zuerst einen Kunden auswählen.");
       return;
     }
     if (!CLOUD_FUNCTION_PUSH_URL.startsWith("https://")) {
@@ -1060,12 +1060,12 @@ const registerForPushNotificationsAsync = async (uid: string) => {
           password: EXPORT_PASSWORD,
         }),
       });
-      Alert.alert("Gesendet", "Push-Nachricht wurde ausgel?st.");
+      Alert.alert("Gesendet", "Push-Nachricht wurde ausgelöst.");
       setPushBody("");
       setPushTitle("");
     } catch (e) {
       console.error("Push senden fehlgeschlagen", e);
-      Alert.alert("Fehler", "Push konnte nicht gesendet werden. Bitte Endpoint pr?fen.");
+      Alert.alert("Fehler", "Push konnte nicht gesendet werden. Bitte Endpoint prüfen.");
     } finally {
       setPushBusy(false);
     }
@@ -1333,12 +1333,12 @@ const handleSaveCustomerPoints = async () => {
   const handleDeleteRewardAction = async (actionId: string) => {
     if (!firebaseUser?.isAdmin || !actionId) return;
     Alert.alert(
-      "Aktion l��schen",
-      "M��chtest du diese Pr��mien-Aktion wirklich l��schen?",
+      "Aktion löschen",
+      "Möchtest du diese Prämien-Aktion wirklich löschen?",
       [
         { text: "Abbrechen", style: "cancel" },
         {
-          text: "L��schen",
+          text: "Löschen",
           style: "destructive",
           onPress: async () => {
             try {
@@ -1349,8 +1349,8 @@ const handleSaveCustomerPoints = async () => {
                 resetRewardActionForm();
               }
             } catch (err) {
-              console.error("Aktion l��schen fehlgeschlagen:", err);
-              Alert.alert("Fehler", "Die Aktion konnte nicht gel��scht werden.");
+              console.error("Aktion löschen fehlgeschlagen:", err);
+              Alert.alert("Fehler", "Die Aktion konnte nicht gelöscht werden.");
             } finally {
               setRewardActionsBusyId(null);
             }
@@ -1369,8 +1369,8 @@ const handleSaveCustomerPoints = async () => {
       const ref = doc(db, "rewardActions", action.id);
       await updateDoc(ref, { active: nextActive });
     } catch (err) {
-      console.error("Aktiv-Status ��ndern fehlgeschlagen:", err);
-      Alert.alert("Fehler", "Status konnte nicht ge��ndert werden.");
+      console.error("Aktiv-Status ?ndern fehlgeschlagen:", err);
+      Alert.alert("Fehler", "Status konnte nicht ge?ndert werden.");
     } finally {
       setRewardActionsBusyId(null);
     }
@@ -1557,7 +1557,7 @@ const handleSaveCustomerPoints = async () => {
     if (!firebaseUser) return;
     if (!isActionActiveForNow(action)) {
       Alert.alert(
-        "Aktion nicht verf��gbar",
+        "Aktion nicht verf?gbar",
         "Diese Aktion ist aktuell nicht freigeschaltet."
       );
       return;
@@ -2047,7 +2047,7 @@ const handleSaveCustomerPoints = async () => {
               {rewardActionsLoading && visibleRewardActions.length === 0 ? (
                 <ActivityIndicator style={{ marginTop: 8 }} />
               ) : visibleRewardActions.length === 0 ? (
-                <Text style={styles.emptyText}>Keine Aktionen verf��gbar.</Text>
+                <Text style={styles.emptyText}>Keine Aktionen verf?gbar.</Text>
               ) : (
                 visibleRewardActions.map((action) => {
                 const status = rewardClaims[action.id];
@@ -2195,6 +2195,106 @@ const handleSaveCustomerPoints = async () => {
             <Text style={styles.sectionTitle}>
               Kundenverwaltung (nur Mitarbeiter)
             </Text>
+
+            <View style={[styles.pointsCard, { marginTop: 10 }]}>
+              <Text style={styles.sectionTitle}>Prämien-Aktionen verwalten</Text>
+              <Text style={styles.modalText}>
+                Jetzt auf eigener Seite – auch ohne Kundenauswahl erreichbar.
+              </Text>
+              <TouchableOpacity
+                style={[styles.primaryButton, { marginTop: 8 }]}
+                onPress={() => router.push("/manage-reward-actions")}
+              >
+                <Text style={styles.primaryButtonText}>Zur Verwaltung wechseln</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Push-Nachricht senden */}
+            <View style={[styles.pointsCard, { marginTop: 12 }]}>
+              <TouchableOpacity
+                style={styles.accordionHeader}
+                onPress={handleRequestPushAccess}
+              >
+                <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>
+                <Text style={styles.accordionChevron}>
+                  {pushSectionExpanded ? "▼" : "▶"}
+                </Text>
+              </TouchableOpacity>
+
+              {pushSectionExpanded && (
+                <>
+                  <Text style={{ fontSize: 12, color: "#777", marginBottom: 8 }}>
+                    Senden an ausgewählten Kunden oder alle Kunden.
+                  </Text>
+                  <Text style={styles.loginLabel}>Titel</Text>
+                  <TextInput
+                    style={styles.loginInput}
+                    value={pushTitle}
+                    onChangeText={setPushTitle}
+                    placeholder="Titel"
+                  />
+
+                  <Text style={styles.loginLabel}>Nachricht</Text>
+                  <TextInput
+                    style={[styles.loginInput, { height: 80 }]}
+                    value={pushBody}
+                    onChangeText={setPushBody}
+                    placeholder="Nachrichtentext"
+                    multiline
+                  />
+
+                  <View style={{ flexDirection: "row", marginTop: 10 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.toggleButton,
+                        pushTarget === "selected" && styles.toggleButtonActive,
+                        { flex: 1, marginRight: 6 },
+                      ]}
+                      onPress={() => setPushTarget("selected")}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleButtonText,
+                          pushTarget === "selected" && styles.toggleButtonTextActive,
+                        ]}
+                      >
+                        Ausgewählter Kunde
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.toggleButton,
+                        pushTarget === "all" && styles.toggleButtonActive,
+                        { flex: 1, marginLeft: 6 },
+                      ]}
+                      onPress={() => setPushTarget("all")}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleButtonText,
+                          pushTarget === "all" && styles.toggleButtonTextActive,
+                        ]}
+                      >
+                        Alle Kunden
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.adminActionButton,
+                      { marginTop: 12, opacity: pushBusy ? 0.6 : 1 },
+                    ]}
+                    disabled={pushBusy}
+                    onPress={handleSendPush}
+                  >
+                    <Text style={styles.primaryButtonText}>
+                      {pushBusy ? "Sende..." : "Push senden"}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
 
             <View style={styles.loginField}>
               <TextInput
@@ -2559,233 +2659,6 @@ const handleSaveCustomerPoints = async () => {
                         )}
                       </View>
 
-                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
-                        <TouchableOpacity
-                          style={styles.accordionHeader}
-                          onPress={() =>
-                            setRewardActionsManageExpanded((prev) => !prev)
-                          }
-                        >
-                          <Text style={styles.sectionTitle}>Prämien-Aktionen verwalten</Text>
-                          <Text style={styles.accordionChevron}>
-                            {rewardActionsManageExpanded ? "\u25BC" : "\u25B6"}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {rewardActionsManageExpanded && (
-                          <>
-                            <Text style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>
-                              Aktionen werden in der Kundensicht angezeigt, wenn sie aktiv
-                              und im Start/Endzeitraum liegen.
-                            </Text>
-
-                            <Text style={styles.loginLabel}>Titel</Text>
-                            <TextInput
-                              style={styles.loginInput}
-                              value={rewardActionTitle}
-                              onChangeText={setRewardActionTitle}
-                              placeholder="z. B. 5-Sterne Bewertung"
-                            />
-
-                            <Text style={styles.loginLabel}>Beschreibung</Text>
-                            <TextInput
-                              style={[styles.loginInput, { height: 70 }]}
-                              value={rewardActionDescription}
-                              onChangeText={setRewardActionDescription}
-                              placeholder="Kurzbeschreibung"
-                              multiline
-                            />
-
-                            <Text style={styles.loginLabel}>Punkte</Text>
-                            <TextInput
-                              style={styles.loginInput}
-                              value={rewardActionPoints}
-                              onChangeText={setRewardActionPoints}
-                              placeholder="z. B. 50"
-                              keyboardType="number-pad"
-                            />
-
-                            <Text style={styles.loginLabel}>Link (optional)</Text>
-                            <TextInput
-                              style={styles.loginInput}
-                              value={rewardActionUrl}
-                              onChangeText={setRewardActionUrl}
-                              placeholder="https://..."
-                              autoCapitalize="none"
-                              autoCorrect={false}
-                            />
-
-                            <Text style={styles.loginLabel}>Sortierung (Order)</Text>
-                            <TextInput
-                              style={styles.loginInput}
-                              value={rewardActionOrder}
-                              onChangeText={setRewardActionOrder}
-                              placeholder="1 = oben"
-                              keyboardType="number-pad"
-                            />
-
-                            <View style={{ flexDirection: "row", gap: 10 }}>
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.loginLabel}>Startdatum (YYYY-MM-DD)</Text>
-                                <TextInput
-                                  style={styles.loginInput}
-                                  value={rewardActionStartDate}
-                                  onChangeText={setRewardActionStartDate}
-                                  placeholder="z. B. 2025-12-01"
-                                  autoCapitalize="none"
-                                  autoCorrect={false}
-                                />
-                              </View>
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.loginLabel}>Enddatum (optional)</Text>
-                                <TextInput
-                                  style={styles.loginInput}
-                                  value={rewardActionEndDate}
-                                  onChangeText={setRewardActionEndDate}
-                                  placeholder="z. B. 2025-12-31"
-                                  autoCapitalize="none"
-                                  autoCorrect={false}
-                                />
-                              </View>
-                            </View>
-
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                marginTop: 10,
-                              }}
-                            >
-                              <Text style={styles.loginLabel}>Aktiv</Text>
-                              <Switch
-                                value={rewardActionActive}
-                                onValueChange={setRewardActionActive}
-                                thumbColor={rewardActionActive ? "#c49a6c" : "#f4f3f4"}
-                                trackColor={{ false: "#ccc", true: "#f0e0cf" }}
-                              />
-                            </View>
-
-                            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-                              <TouchableOpacity
-                                style={[
-                                  styles.primaryButton,
-                                  { flex: 1, opacity: rewardActionsBusyId ? 0.7 : 1 },
-                                ]}
-                                onPress={handleSaveRewardAction}
-                                disabled={!!rewardActionsBusyId}
-                              >
-                                <Text style={styles.primaryButtonText}>
-                                  {rewardActionsBusyId
-                                    ? "Bitte warten..."
-                                    : editingRewardActionId
-                                    ? "Änderungen speichern"
-                                    : "Aktion speichern"}
-                                </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[styles.secondaryButton, { flex: 1 }]}
-                                onPress={resetRewardActionForm}
-                                disabled={!!rewardActionsBusyId}
-                              >
-                                <Text style={styles.secondaryButtonText}>Zur��cksetzen</Text>
-                              </TouchableOpacity>
-                            </View>
-
-                            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>
-                              Bestehende Aktionen
-                            </Text>
-                            {sortedRewardActions.length === 0 ? (
-                              <Text style={styles.emptyText}>Keine Aktionen gespeichert.</Text>
-                            ) : (
-                              sortedRewardActions.map((action) => {
-                                const active = action.active !== false;
-                                return (
-                                  <View
-                                    key={action.id}
-                                    style={[
-                                      styles.redemptionCard,
-                                      { alignItems: "flex-start" },
-                                    ]}
-                                  >
-                                    <View style={{ flex: 1 }}>
-                                      <Text style={styles.redemptionTitle}>{action.title}</Text>
-                                      <Text style={styles.redemptionMeta}>
-                                        +{action.points} P
-                                        {action.order ? ` • Ordnung ${action.order}` : ""}
-                                        {action.startDate ? ` • Start ${action.startDate}` : ""}
-                                        {action.endDate ? ` • Ende ${action.endDate}` : ""}
-                                      </Text>
-                                      <Text style={styles.actionDescription}>
-                                        {action.description}
-                                      </Text>
-                                    </View>
-                                    <View style={{ alignItems: "flex-end" }}>
-                                      <Text
-                                        style={[
-                                          styles.statusChipText,
-                                          { color: active ? "#256029" : "#a87132" },
-                                        ]}
-                                      >
-                                        {active ? "Aktiv" : "Inaktiv"}
-                                      </Text>
-                                      <TouchableOpacity
-                                        style={[
-                                          styles.smallButton,
-                                          { marginTop: 6, paddingVertical: 6, paddingHorizontal: 10 },
-                                          rewardActionsBusyId === action.id &&
-                                            styles.actionButtonDisabled,
-                                        ]}
-                                        disabled={rewardActionsBusyId === action.id}
-                                        onPress={() => handleEditRewardAction(action)}
-                                      >
-                                        <Text style={styles.smallButtonText}>Bearbeiten</Text>
-                                      </TouchableOpacity>
-                                      <TouchableOpacity
-                                        style={[
-                                          styles.smallButton,
-                                          {
-                                            marginTop: 6,
-                                            paddingVertical: 6,
-                                            paddingHorizontal: 10,
-                                            backgroundColor: active ? "#c0392b" : "#2e8b57",
-                                          },
-                                          rewardActionsBusyId === action.id &&
-                                            styles.actionButtonDisabled,
-                                        ]}
-                                        disabled={rewardActionsBusyId === action.id}
-                                        onPress={() => handleToggleRewardActionActive(action)}
-                                      >
-                                        <Text style={styles.smallButtonText}>
-                                          {active ? "Deaktivieren" : "Aktivieren"}
-                                        </Text>
-                                      </TouchableOpacity>
-                                      <TouchableOpacity
-                                        style={[
-                                          styles.smallButton,
-                                          {
-                                            marginTop: 6,
-                                            paddingVertical: 6,
-                                            paddingHorizontal: 10,
-                                            backgroundColor: "#c0392b",
-                                          },
-                                          rewardActionsBusyId === action.id &&
-                                            styles.actionButtonDisabled,
-                                        ]}
-                                        disabled={rewardActionsBusyId === action.id}
-                                        onPress={() => handleDeleteRewardAction(action.id)}
-                                      >
-                                        <Text style={styles.smallButtonText}>L��schen</Text>
-                                      </TouchableOpacity>
-                                    </View>
-                                  </View>
-                                );
-                              })
-                            )}
-                          </>
-                        )}
-                      </View>
-
                       {/* Kundendaten bearbeiten */}
                       <View style={[styles.pointsCard, { marginTop: 20 }]}>
                         <TouchableOpacity
@@ -2894,97 +2767,6 @@ const handleSaveCustomerPoints = async () => {
                     </>
                   )}
           </View>
-        )}
-
-        {isAdmin && isAdminView && (
-          <>
-            {/* Push-Nachricht senden */}
-            <View style={[styles.pointsCard, { marginTop: 1 }]}>
-              <TouchableOpacity
-                style={styles.accordionHeader}
-                onPress={handleRequestPushAccess}
-              >
-                <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>
-                <Text style={styles.accordionChevron}>
-                  {pushSectionExpanded ? "\u25BC" : "\u25B6"}
-                </Text>
-              </TouchableOpacity>
-
-              {pushSectionExpanded && (
-                <>
-                  <Text style={{ fontSize: 12, color: "#777", marginBottom: 8 }}>
-                    Senden an ausgewählten Kunden oder alle Kunden
-                  </Text>
-                  <Text style={styles.loginLabel}>Titel</Text>
-                  <TextInput
-                    style={styles.loginInput}
-                    value={pushTitle}
-                    onChangeText={setPushTitle}
-                    placeholder="Titel"
-                  />
-
-                  <Text style={styles.loginLabel}>Nachricht</Text>
-                  <TextInput
-                    style={[styles.loginInput, { height: 80 }]}
-                    value={pushBody}
-                    onChangeText={setPushBody}
-                    placeholder="Nachrichtentext"
-                    multiline
-                  />
-
-                  <View style={{ flexDirection: "row", marginTop: 10 }}>
-                    <TouchableOpacity
-                      style={[
-                        styles.toggleButton,
-                        pushTarget === "selected" && styles.toggleButtonActive,
-                        { flex: 1, marginRight: 6 },
-                      ]}
-                      onPress={() => setPushTarget("selected")}
-                    >
-                      <Text
-                        style={[
-                          styles.toggleButtonText,
-                          pushTarget === "selected" && styles.toggleButtonTextActive,
-                        ]}
-                      >
-                        Ausgewaehlter Kunde
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.toggleButton,
-                        pushTarget === "all" && styles.toggleButtonActive,
-                        { flex: 1, marginLeft: 6 },
-                      ]}
-                      onPress={() => setPushTarget("all")}
-                    >
-                      <Text
-                        style={[
-                          styles.toggleButtonText,
-                          pushTarget === "all" && styles.toggleButtonTextActive,
-                        ]}
-                      >
-                        Alle Kunden
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.adminActionButton,
-                      { marginTop: 12, opacity: pushBusy ? 0.6 : 1 },
-                    ]}
-                    disabled={pushBusy}
-                    onPress={handleSendPush}
-                  >
-                    <Text style={styles.primaryButtonText}>
-                      {pushBusy ? "Sende..." : "Push senden"}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </>
         )}
       </ScrollView>
       </KeyboardAvoidingView>
