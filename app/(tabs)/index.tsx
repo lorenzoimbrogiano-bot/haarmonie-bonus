@@ -239,6 +239,10 @@ export default function BonusApp() {
   const [pushPasswordInput, setPushPasswordInput] = useState("");
   const [pushPasswordError, setPushPasswordError] = useState("");
   const [showAllVisits, setShowAllVisits] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowIntro(false), 3200);
@@ -514,6 +518,42 @@ useEffect(() => {
 
     return () => unsub();
   }, [firebaseUser]);
+
+  const handleSendAppFeedback = async () => {
+    const message = feedbackMessage.trim();
+    if (!message) {
+      Alert.alert("Feedback fehlt", "Bitte dein Feedback eintragen.");
+      return;
+    }
+    const user = auth.currentUser;
+    const email = firebaseUser?.email || user?.email || "unbekannt";
+    setFeedbackBusy(true);
+    try {
+      await addDoc(collection(db, "appFeedback"), {
+        message,
+        userId: user?.uid || null,
+        email,
+        platform: Platform.OS,
+        createdAt: serverTimestamp(),
+      });
+
+      const mailto = `mailto:info@haarmonie-sha.de?subject=App%20Feedback&body=${encodeURIComponent(
+        `Von: ${email}\n\n${message}`
+      )}`;
+      await Linking.openURL(mailto);
+
+      setFeedbackSent(true);
+      setFeedbackMessage("");
+    } catch (err) {
+      console.error("Feedback senden fehlgeschlagen:", err);
+      Alert.alert(
+        "Fehler",
+        "Feedback konnte nicht gesendet werden. Bitte später erneut versuchen."
+      );
+    } finally {
+      setFeedbackBusy(false);
+    }
+  };
 
   // -----------------------------------
   // Live-Updates für Besuchshistorie
@@ -2141,6 +2181,23 @@ const handleSaveCustomerPoints = async () => {
                 </>
               )}
             </View>
+
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.feedbackCard}
+                onPress={() => setShowFeedbackModal(true)}
+              >
+                <Text style={styles.sectionTitle}>Feedback zur App</Text>
+                <Text style={styles.modalText}>
+                  Wir freuen uns über deine Rückmeldung. Tippe hier, um Feedback zu schreiben.
+                </Text>
+              </TouchableOpacity>
+              {feedbackSent && (
+                <Text style={[styles.modalText, { color: "#256029", marginTop: 6 }]}>
+                  Vielen Dank! Feedback wurde erfasst.
+                </Text>
+              )}
+            </View>
           </>
         )}
 
@@ -2684,6 +2741,59 @@ const handleSaveCustomerPoints = async () => {
         )}
       </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={showFeedbackModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowFeedbackModal(false);
+          setFeedbackBusy(false);
+        }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.sectionTitle}>Feedback zur App</Text>
+            <Text style={styles.modalText}>
+              Teile uns mit, was wir verbessern können. Dein Feedback wird per E-Mail App auf deinem Handy an uns geschickt.
+            </Text>
+            <TextInput
+              style={[styles.loginInput, { height: 140, marginTop: 8 }]}
+              value={feedbackMessage}
+              onChangeText={(t) => {
+                setFeedbackMessage(t);
+                if (feedbackSent) setFeedbackSent(false);
+              }}
+              placeholder="Was sollen wir besser machen?"
+              multiline
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => {
+                  setShowFeedbackModal(false);
+                  setFeedbackBusy(false);
+                }}
+              >
+                <Text style={styles.modalCancelText}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  { marginLeft: 10, opacity: feedbackBusy ? 0.6 : 1 },
+                ]}
+                disabled={feedbackBusy}
+                onPress={handleSendAppFeedback}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {feedbackBusy ? "Sende..." : "Feedback senden"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={showPushPasswordModal}
@@ -3325,6 +3435,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#555",
     fontWeight: "600",
+  },
+  feedbackCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#eaded1",
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   redemptionHeader: {
     backgroundColor: "#e9f7ef",
