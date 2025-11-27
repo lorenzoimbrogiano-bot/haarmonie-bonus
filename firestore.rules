@@ -64,8 +64,8 @@ service cloud.firestore {
 
     // Sammlung: App-Feedback (Kund:innen schreiben, optional Admin liest)
     match /appFeedback/{feedbackId} {
-      // Schreiben: jede eingeloggte Person darf Feedback abgeben
-      allow create: if request.auth != null;
+      // Schreiben: Feedback darf auch ohne Login erfasst werden
+      allow create: if true;
 
       // Lesen: nur Admin
       allow read, update, delete: if request.auth != null

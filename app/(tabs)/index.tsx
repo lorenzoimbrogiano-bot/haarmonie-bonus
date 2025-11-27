@@ -243,7 +243,7 @@ export default function BonusApp() {
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowIntro(false), 3200);
@@ -530,13 +530,15 @@ useEffect(() => {
     const email = firebaseUser?.email || user?.email || "unbekannt";
     setFeedbackBusy(true);
     try {
-      await addDoc(collection(db, "appFeedback"), {
-        message,
-        userId: user?.uid || null,
-        email,
-        platform: Platform.OS,
-        createdAt: serverTimestamp(),
-      });
+      if (user) {
+        await addDoc(collection(db, "appFeedback"), {
+          message,
+          userId: user?.uid || null,
+          email,
+          platform: Platform.OS,
+          createdAt: serverTimestamp(),
+        });
+      }
 
       const mailto = `mailto:info@haarmonie-sha.de?subject=App%20Feedback&body=${encodeURIComponent(
         `Von: ${email}\n\n${message}`
@@ -554,6 +556,14 @@ useEffect(() => {
       }, 5000);
     } catch (err) {
       console.error("Feedback senden fehlgeschlagen:", err);
+      const mailto = `mailto:info@haarmonie-sha.de?subject=App%20Feedback&body=${encodeURIComponent(
+        `Von: ${email}\n\n${message}`
+      )}`;
+      try {
+        await Linking.openURL(mailto);
+      } catch {
+        // ignore secondary failure
+      }
       Alert.alert(
         "Fehler",
         "Feedback konnte nicht gesendet werden. Bitte später erneut versuchen."
