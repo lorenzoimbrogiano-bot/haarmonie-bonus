@@ -2152,7 +2152,7 @@ const handleSaveCustomerPoints = async () => {
             <View style={[styles.pointsCard, { marginTop: 12 }]}>
               <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>
               <Text style={styles.modalText}>
-                Push-Nachrichten an einzelne Kunden oder alle versenden.
+                Push-Nachrichten an alle Kunden versenden.
               </Text>
               <TouchableOpacity
                 style={[styles.primaryButton, { marginTop: 8 }]}

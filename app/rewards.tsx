@@ -127,7 +127,15 @@ export default function RewardsScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Prämienübersicht</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Prämienübersicht</Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, styles.backButton]}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.primaryButtonText}>Zurück</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.subtitle}>
           Hier siehst du alle Bonus-Prämien und die benötigten Punkte.
         </Text>
@@ -241,12 +249,6 @@ export default function RewardsScreen() {
           );
         })}
 
-        <TouchableOpacity
-          style={[styles.backButton, { marginTop: 20 }]}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.backButtonText}>Zurück</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       <Modal
@@ -304,15 +306,34 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   title: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "700",
     color: "#333",
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#777",
     marginTop: 6,
-    marginBottom: 18,
+    marginBottom: 14,
+  },
+  primaryButton: {
+    backgroundColor: "#c49a6c",
+    borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
   },
   pointsBanner: {
     backgroundColor: "#fdf4ea",
@@ -453,15 +474,9 @@ const styles = StyleSheet.create({
     color: "#9c8a73",
   },
   backButton: {
-    backgroundColor: "#c49a6c",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  backButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
   },
   modalBackdrop: {
     flex: 1,
