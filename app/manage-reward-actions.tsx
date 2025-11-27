@@ -341,13 +341,13 @@ export default function ManageRewardActions() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
+          <Text style={styles.pageTitle}>Prämien-Aktionen verwalten</Text>
           <TouchableOpacity
             onPress={() => router.back()}
             style={[styles.primaryButton, styles.backButton]}
           >
             <Text style={styles.primaryButtonText}>Zurück</Text>
           </TouchableOpacity>
-          <Text style={styles.pageTitle}>Prämien-Aktionen verwalten</Text>
         </View>
 
         <Text style={styles.helperText}>
