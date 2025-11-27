@@ -540,8 +540,10 @@ useEffect(() => {
         });
       }
 
+      const userName = firebaseUser?.name || "Nutzer";
+      const mailBody = `${userName}\nFeedback zur Handy APP\n\n${message}`;
       const mailto = `mailto:info@haarmonie-sha.de?subject=App%20Feedback&body=${encodeURIComponent(
-        `Von: ${email}\n\n${message}`
+        mailBody
       )}`;
       await Linking.openURL(mailto);
 
@@ -556,8 +558,10 @@ useEffect(() => {
       }, 5000);
     } catch (err) {
       console.error("Feedback senden fehlgeschlagen:", err);
+      const userName = firebaseUser?.name || "Nutzer";
+      const mailBody = `${userName}\nFeedback zur Handy APP\n\n${message}`;
       const mailto = `mailto:info@haarmonie-sha.de?subject=App%20Feedback&body=${encodeURIComponent(
-        `Von: ${email}\n\n${message}`
+        mailBody
       )}`;
       try {
         await Linking.openURL(mailto);
