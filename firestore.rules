@@ -51,5 +51,15 @@ service cloud.firestore {
       allow write: if request.auth != null
                    && request.auth.token.email == "info@haarmonie-sha.de";
     }
+
+    // Sammlung: Prämien-Übersicht (Kund:innen lesen, Admin pflegt)
+    match /rewards/{rewardId} {
+      // Lesen: alle eingeloggten Nutzer:innen
+      allow read: if request.auth != null;
+
+      // Schreiben: nur Admin-E-Mail
+      allow write: if request.auth != null
+                   && request.auth.token.email == "info@haarmonie-sha.de";
+    }
   }
 }

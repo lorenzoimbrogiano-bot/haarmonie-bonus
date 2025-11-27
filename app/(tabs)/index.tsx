@@ -2148,6 +2148,19 @@ const handleSaveCustomerPoints = async () => {
               </TouchableOpacity>
             </View>
 
+            <View style={[styles.pointsCard, { marginTop: 12 }]}>
+              <Text style={styles.sectionTitle}>Prämien verwalten</Text>
+              <Text style={styles.modalText}>
+                Prämien der Kundenübersicht anlegen, bearbeiten oder löschen.
+              </Text>
+              <TouchableOpacity
+                style={[styles.primaryButton, { marginTop: 8 }]}
+                onPress={() => router.push("/manage-rewards")}
+              >
+                <Text style={styles.primaryButtonText}>Zur Verwaltung wechseln</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Push-Nachricht senden */}
             <View style={[styles.pointsCard, { marginTop: 12 }]}>
               <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>

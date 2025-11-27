@@ -1,7 +1,15 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import React, { useMemo, useState } from "react";
 import {
+  addDoc,
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "firebase/firestore";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
   Alert,
   Modal,
   ScrollView,
@@ -18,9 +26,10 @@ type Reward = {
   title: string;
   description: string;
   pointsRequired: number;
+  active?: boolean;
 };
 
-const REWARDS: Reward[] = [
+const DEFAULT_REWARDS: Reward[] = [
   {
     id: "pflege",
     title: "Pflege-Upgrade",
@@ -59,15 +68,58 @@ export default function RewardsScreen() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [rewardsLoading, setRewardsLoading] = useState(true);
 
-  const orderedRewards = useMemo(
-    () => [...REWARDS].sort((a, b) => a.pointsRequired - b.pointsRequired),
-    []
-  );
+  useEffect(() => {
+    const rewardsRef = collection(db, "rewards");
+    const q = query(rewardsRef, orderBy("pointsRequired", "asc"), orderBy("createdAt", "desc"));
+
+    let unsub = () => {};
+    try {
+      unsub = onSnapshot(
+        q,
+        (snap) => {
+          const list: Reward[] = [];
+          snap.forEach((docSnap) => {
+          const d = docSnap.data() as any;
+          list.push({
+            id: docSnap.id,
+            title: d.title || "",
+            description: d.description || "",
+            pointsRequired: typeof d.pointsRequired === "number" ? d.pointsRequired : 0,
+            active: d.active !== false,
+            createdAt: d.createdAt?.toDate ? d.createdAt.toDate() : undefined,
+          });
+        });
+        setRewards(list);
+          setRewardsLoading(false);
+        },
+        (err) => {
+          console.error("Prämien konnten nicht geladen werden:", err);
+          setRewards(DEFAULT_REWARDS);
+          setRewardsLoading(false);
+        }
+      );
+    } catch (err) {
+      console.error("Prämien konnten nicht geladen werden:", err);
+      setRewards(DEFAULT_REWARDS);
+      setRewardsLoading(false);
+    }
+
+    return () => unsub();
+  }, []);
+
+  const availableRewards = useMemo(() => {
+    const base = rewards.length > 0 ? rewards : DEFAULT_REWARDS;
+    return base
+      .filter((r) => r.active !== false)
+      .sort((a, b) => a.pointsRequired - b.pointsRequired);
+  }, [rewards]);
 
   const nextReward = useMemo(() => {
-    return orderedRewards.find((r) => r.pointsRequired > currentPoints);
-  }, [orderedRewards, currentPoints]);
+    return availableRewards.find((r) => r.pointsRequired > currentPoints);
+  }, [availableRewards, currentPoints]);
 
   const progressRatio = useMemo(() => {
     if (!nextReward) return 1;
@@ -184,70 +236,75 @@ export default function RewardsScreen() {
           </View>
         )}
 
-        {REWARDS.map((reward) => {
-          const canRedeem =
-            hasPoints && parsedPoints >= reward.pointsRequired;
-          const missing = hasPoints
-            ? reward.pointsRequired - parsedPoints
-            : null;
+        {rewardsLoading && availableRewards.length === 0 ? (
+          <View style={{ marginTop: 12 }}>
+            <ActivityIndicator />
+          </View>
+        ) : availableRewards.length === 0 ? (
+          <Text style={styles.emptyText}>Keine Prämien verfügbar.</Text>
+        ) : (
+          availableRewards.map((reward) => {
+            const canRedeem = hasPoints && parsedPoints >= reward.pointsRequired;
+            const missing = hasPoints ? reward.pointsRequired - parsedPoints : null;
 
-          return (
-            <View
-              key={reward.id}
-              style={[
-                styles.rewardRow,
-                canRedeem && styles.rewardRowActive,
-              ]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rewardTitle}>{reward.title}</Text>
-                <Text style={styles.rewardDescription}>
-                  {reward.description}
-                </Text>
-              </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={styles.rewardPoints}>
-                  {reward.pointsRequired} P
-                </Text>
-                <Text
-                  style={[
-                    styles.rewardStatus,
-                    canRedeem
-                      ? styles.rewardStatusActive
-                      : styles.rewardStatusInactive,
-                  ]}
-                >
-                  {canRedeem
-                    ? "Einlösbar im Salon"
-                    : missing !== null
-                    ? `Es fehlen ${missing} P`
-                    : "Punktestand unbekannt"}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setSelectedReward(reward)}
-                  disabled={!canRedeem}
-                  style={[
-                    styles.claimButton,
-                    !canRedeem && styles.claimButtonDisabled,
-                  ]}
-                >
+            return (
+              <View
+                key={reward.id}
+                style={[
+                  styles.rewardRow,
+                  canRedeem && styles.rewardRowActive,
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rewardTitle}>{reward.title}</Text>
+                  <Text style={styles.rewardDescription}>
+                    {reward.description}
+                  </Text>
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.rewardPoints}>
+                    {reward.pointsRequired} P
+                  </Text>
                   <Text
                     style={[
-                      styles.claimButtonText,
-                      !canRedeem && styles.claimButtonTextDisabled,
+                      styles.rewardStatus,
+                      canRedeem
+                        ? styles.rewardStatusActive
+                        : styles.rewardStatusInactive,
                     ]}
                   >
                     {canRedeem
-                      ? "Jetzt einlösen"
+                      ? "Einlösbar im Salon"
                       : missing !== null
-                      ? `${missing} P fehlen`
-                      : "Punktestand offen"}
+                      ? `Es fehlen ${missing} P`
+                      : "Punktestand unbekannt"}
                   </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setSelectedReward(reward)}
+                    disabled={!canRedeem}
+                    style={[
+                      styles.claimButton,
+                      !canRedeem && styles.claimButtonDisabled,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.claimButtonText,
+                        !canRedeem && styles.claimButtonTextDisabled,
+                      ]}
+                    >
+                      {canRedeem
+                        ? "Jetzt einlösen"
+                        : missing !== null
+                        ? `${missing} P fehlen`
+                        : "Punktestand offen"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
 
       </ScrollView>
 
