@@ -238,6 +238,7 @@ export default function BonusApp() {
   const [showPushPasswordModal, setShowPushPasswordModal] = useState(false);
   const [pushPasswordInput, setPushPasswordInput] = useState("");
   const [pushPasswordError, setPushPasswordError] = useState("");
+  const [showAllVisits, setShowAllVisits] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowIntro(false), 3200);
@@ -2094,37 +2095,50 @@ const handleSaveCustomerPoints = async () => {
                   Noch keine Buchungen vorhanden.
                 </Text>
               ) : (
-                visitHistory.map((v) => {
-                  const reason =
-                    v.reason ||
-                    (typeof v.amount === "number"
-                      ? "Salonmitarbeiter"
-                      : undefined);
-                  const employee = v.employeeName;
+                <>
+                  {(showAllVisits ? visitHistory : visitHistory.slice(0, 3)).map((v) => {
+                    const reason =
+                      v.reason ||
+                      (typeof v.amount === "number"
+                        ? "Salonmitarbeiter"
+                        : undefined);
+                    const employee = v.employeeName;
 
-                  return (
-                    <View key={v.id} style={styles.visitItem}>
-                      <Text style={styles.visitDate}>{v.date}</Text>
-                      <Text style={styles.visitPoints}>
-                        {v.points > 0
-                          ? `+${v.points}`
-                          : v.points < 0
-                          ? `${v.points}`
-                          : "0"}{" "}
-                        Punkte
-                        {typeof v.amount === "number"
-                          ? ` (aus ${v.amount.toFixed(2)} €)`
-                          : ""}
-                      </Text>
-                      {reason && (
-                        <Text style={styles.visitReason}>
-                          Grund: {reason}
-                          {employee ? ` · Mitarbeiter: ${employee}` : ""}
+                    return (
+                      <View key={v.id} style={styles.visitItem}>
+                        <Text style={styles.visitDate}>{v.date}</Text>
+                        <Text style={styles.visitPoints}>
+                          {v.points > 0
+                            ? `+${v.points}`
+                            : v.points < 0
+                            ? `${v.points}`
+                            : "0"}{" "}
+                          Punkte
+                          {typeof v.amount === "number"
+                            ? ` (aus ${v.amount.toFixed(2)} €)`
+                            : ""}
                         </Text>
-                      )}
-                    </View>
-                  );
-                })
+                        {reason && (
+                          <Text style={styles.visitReason}>
+                            Grund: {reason}
+                            {employee ? ` · Mitarbeiter: ${employee}` : ""}
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
+
+                  {visitHistory.length > 3 && (
+                    <TouchableOpacity
+                      style={[styles.secondaryButton, { marginTop: 12 }]}
+                      onPress={() => setShowAllVisits((prev) => !prev)}
+                    >
+                      <Text style={styles.secondaryButtonText}>
+                        {showAllVisits ? "Weniger anzeigen" : "Alle anzeigen"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
             </View>
           </>
