@@ -243,6 +243,7 @@ export default function BonusApp() {
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowIntro(false), 3200);
@@ -544,6 +545,13 @@ useEffect(() => {
 
       setFeedbackSent(true);
       setFeedbackMessage("");
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+      feedbackTimerRef.current = setTimeout(() => {
+        setFeedbackSent(false);
+        feedbackTimerRef.current = null;
+      }, 5000);
     } catch (err) {
       console.error("Feedback senden fehlgeschlagen:", err);
       Alert.alert(
@@ -554,6 +562,15 @@ useEffect(() => {
       setFeedbackBusy(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // -----------------------------------
   // Live-Updates für Besuchshistorie
