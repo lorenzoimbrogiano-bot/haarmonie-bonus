@@ -231,19 +231,13 @@ export default function BonusApp() {
   const [showCustomerPasswordModal, setShowCustomerPasswordModal] = useState(false);
   const [customerPasswordInput, setCustomerPasswordInput] = useState("");
   const [customerPasswordError, setCustomerPasswordError] = useState("");
-  const [pushTitle, setPushTitle] = useState("");
-  const [pushBody, setPushBody] = useState("");
-  const [pushTarget, setPushTarget] = useState<"all" | "selected">("selected");
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushSectionExpanded, setPushSectionExpanded] = useState(false);
-  const [pushUnlocked, setPushUnlocked] = useState(false);
-  const [showPushPasswordModal, setShowPushPasswordModal] = useState(false);
-  const [pushPasswordInput, setPushPasswordInput] = useState("");
-  const [pushPasswordError, setPushPasswordError] = useState("");
   const [showExportPasswordModal, setShowExportPasswordModal] = useState(false);
   const [exportPasswordInput, setExportPasswordInput] = useState("");
   const [exportPasswordError, setExportPasswordError] = useState("");
   const [exportBusy, setExportBusy] = useState(false);
+  const [showPushPasswordModal, setShowPushPasswordModal] = useState(false);
+  const [pushPasswordInput, setPushPasswordInput] = useState("");
+  const [pushPasswordError, setPushPasswordError] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => setShowIntro(false), 3200);
@@ -566,10 +560,6 @@ useEffect(() => {
         setIsRegisterMode(false);
         setIsAdminView(false);
         setSelectedCustomer(null);
-        setPushTitle("");
-        setPushBody("");
-        setPushSectionExpanded(false);
-        setPushUnlocked(false);
       }
       return undefined;
     }, [firebaseUser])
@@ -741,10 +731,9 @@ useEffect(() => {
       setSelectedCustomerRewardClaims({});
       setEditPoints("");
       setCustomerSearch("");
-      setPushTitle("");
-      setPushBody("");
-      setPushSectionExpanded(false);
-      setPushUnlocked(false);
+      setShowPushPasswordModal(false);
+      setPushPasswordError("");
+      setPushPasswordInput("");
     } catch (e) {
       console.error("Fehler beim Logout:", e);
       Alert.alert("Fehler", "Logout ist fehlgeschlagen.");
@@ -1003,77 +992,21 @@ const registerForPushNotificationsAsync = async (uid: string) => {
     );
   };
 
-  const handleRequestPushAccess = () => {
-    if (pushSectionExpanded) {
-      setPushSectionExpanded(false);
-      return;
-    }
-    if (pushUnlocked) {
-      setPushSectionExpanded(true);
-      return;
-    }
+  const handleOpenPushNavigation = () => {
     setPushPasswordError("");
     setPushPasswordInput("");
     setShowPushPasswordModal(true);
   };
 
-  const handleConfirmPushPassword = () => {
-    const providedPassword = pushPasswordInput.trim();
-    if (providedPassword !== EXPORT_PASSWORD) {
+  const handleConfirmPushNavigation = () => {
+    if (pushPasswordInput.trim() !== EXPORT_PASSWORD) {
       setPushPasswordError("Passwort ist falsch.");
       return;
     }
-
     setPushPasswordError("");
     setPushPasswordInput("");
-    setPushUnlocked(true);
     setShowPushPasswordModal(false);
-    setPushSectionExpanded(true);
-  };
-
-  const handleSendPush = async () => {
-    if (!pushUnlocked) {
-      handleRequestPushAccess();
-      return;
-    }
-    if (!pushTitle.trim() || !pushBody.trim()) {
-      Alert.alert("Angaben fehlen", "Bitte Titel und Nachricht ausfüllen.");
-      return;
-    }
-    if (pushTarget === "selected" && !selectedCustomer) {
-      Alert.alert("Kunde fehlt", "Bitte zuerst einen Kunden auswählen.");
-      return;
-    }
-    if (!CLOUD_FUNCTION_PUSH_URL.startsWith("https://")) {
-      Alert.alert("Push-Endpoint fehlt", "Bitte CLOUD_FUNCTION_PUSH_URL konfigurieren.");
-      return;
-    }
-
-    setPushBusy(true);
-
-    try {
-      const targetUserId =
-        pushTarget === "selected" ? selectedCustomer?.id : undefined;
-      await fetch(CLOUD_FUNCTION_PUSH_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: pushTitle.trim(),
-          body: pushBody.trim(),
-          target: pushTarget,
-          userId: targetUserId,
-          password: EXPORT_PASSWORD,
-        }),
-      });
-      Alert.alert("Gesendet", "Push-Nachricht wurde ausgelöst.");
-      setPushBody("");
-      setPushTitle("");
-    } catch (e) {
-      console.error("Push senden fehlgeschlagen", e);
-      Alert.alert("Fehler", "Push konnte nicht gesendet werden. Bitte Endpoint prüfen.");
-    } finally {
-      setPushBusy(false);
-    }
+    router.push("/push-nachrichten");
   };
 
 const handleSaveCustomerPoints = async () => {
@@ -2217,89 +2150,16 @@ const handleSaveCustomerPoints = async () => {
 
             {/* Push-Nachricht senden */}
             <View style={[styles.pointsCard, { marginTop: 12 }]}>
+              <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>
+              <Text style={styles.modalText}>
+                Push-Nachrichten an einzelne Kunden oder alle versenden.
+              </Text>
               <TouchableOpacity
-                style={styles.accordionHeader}
-                onPress={handleRequestPushAccess}
+                style={[styles.primaryButton, { marginTop: 8 }]}
+                onPress={handleOpenPushNavigation}
               >
-                <Text style={styles.sectionTitle}>Push-Nachricht senden</Text>
-                <Text style={styles.accordionChevron}>
-                  {pushSectionExpanded ? "▼" : "▶"}
-                </Text>
+                <Text style={styles.primaryButtonText}>Zur Verwaltung wechseln</Text>
               </TouchableOpacity>
-
-              {pushSectionExpanded && (
-                <>
-                  <Text style={{ fontSize: 12, color: "#777", marginBottom: 8 }}>
-                    Senden an ausgewählten Kunden oder alle Kunden.
-                  </Text>
-                  <Text style={styles.loginLabel}>Titel</Text>
-                  <TextInput
-                    style={styles.loginInput}
-                    value={pushTitle}
-                    onChangeText={setPushTitle}
-                    placeholder="Titel"
-                  />
-
-                  <Text style={styles.loginLabel}>Nachricht</Text>
-                  <TextInput
-                    style={[styles.loginInput, { height: 80 }]}
-                    value={pushBody}
-                    onChangeText={setPushBody}
-                    placeholder="Nachrichtentext"
-                    multiline
-                  />
-
-                  <View style={{ flexDirection: "row", marginTop: 10 }}>
-                    <TouchableOpacity
-                      style={[
-                        styles.toggleButton,
-                        pushTarget === "selected" && styles.toggleButtonActive,
-                        { flex: 1, marginRight: 6 },
-                      ]}
-                      onPress={() => setPushTarget("selected")}
-                    >
-                      <Text
-                        style={[
-                          styles.toggleButtonText,
-                          pushTarget === "selected" && styles.toggleButtonTextActive,
-                        ]}
-                      >
-                        Ausgewählter Kunde
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.toggleButton,
-                        pushTarget === "all" && styles.toggleButtonActive,
-                        { flex: 1, marginLeft: 6 },
-                      ]}
-                      onPress={() => setPushTarget("all")}
-                    >
-                      <Text
-                        style={[
-                          styles.toggleButtonText,
-                          pushTarget === "all" && styles.toggleButtonTextActive,
-                        ]}
-                      >
-                        Alle Kunden
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.adminActionButton,
-                      { marginTop: 12, opacity: pushBusy ? 0.6 : 1 },
-                    ]}
-                    disabled={pushBusy}
-                    onPress={handleSendPush}
-                  >
-                    <Text style={styles.primaryButtonText}>
-                      {pushBusy ? "Sende..." : "Push senden"}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
             </View>
 
             <View style={styles.loginField}>
@@ -2812,7 +2672,7 @@ const handleSaveCustomerPoints = async () => {
           <View style={styles.modalCard}>
             <Text style={styles.sectionTitle}>Passwort erforderlich</Text>
             <Text style={styles.modalText}>
-              Bitte Admin-Passwort eingeben, um eine Push-Nachricht zu senden.
+              Bitte Admin-Passwort eingeben, um Push-Nachrichten zu verwalten.
             </Text>
 
             <TextInput
@@ -2840,16 +2700,10 @@ const handleSaveCustomerPoints = async () => {
                 <Text style={styles.modalCancelText}>Abbrechen</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  { marginLeft: 10, opacity: pushBusy ? 0.6 : 1 },
-                ]}
-                disabled={pushBusy}
-                onPress={handleConfirmPushPassword}
+                style={[styles.modalButton, { marginLeft: 10 }]}
+                onPress={handleConfirmPushNavigation}
               >
-                <Text style={styles.primaryButtonText}>
-                  {pushBusy ? "Bitte warten..." : "Bestätigen"}
-                </Text>
+                <Text style={styles.primaryButtonText}>Bestätigen</Text>
               </TouchableOpacity>
             </View>
           </View>
