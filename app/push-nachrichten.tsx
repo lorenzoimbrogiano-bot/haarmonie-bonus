@@ -64,8 +64,11 @@ export default function ManagePushScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Zurück</Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.primaryButton, styles.backButton]}
+          >
+            <Text style={styles.primaryButtonText}>Zurück</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Push Nachrichten</Text>
         </View>
@@ -129,17 +132,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   backButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#e1d3c5",
-    backgroundColor: "#fff",
-  },
-  backButtonText: {
-    color: "#555",
-    fontSize: 12,
-    fontWeight: "500",
   },
   title: {
     fontSize: 18,

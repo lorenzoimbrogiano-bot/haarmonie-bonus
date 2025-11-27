@@ -341,8 +341,11 @@ export default function ManageRewardActions() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Zurück</Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.primaryButton, styles.backButton]}
+          >
+            <Text style={styles.primaryButtonText}>Zurück</Text>
           </TouchableOpacity>
           <Text style={styles.pageTitle}>Prämien-Aktionen verwalten</Text>
         </View>
@@ -603,9 +606,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   backLink: {
-    color: "#c49a6c",
-    fontWeight: "600",
-    fontSize: 14,
+    // no longer used
+  },
+  backButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
   },
   pageTitle: {
     fontSize: 18,
