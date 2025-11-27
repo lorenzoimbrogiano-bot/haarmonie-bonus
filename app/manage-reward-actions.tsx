@@ -70,6 +70,7 @@ export default function ManageRewardActions() {
   const [editingRewardActionId, setEditingRewardActionId] = useState<string | null>(null);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [orderDropdownOpen, setOrderDropdownOpen] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -340,11 +341,10 @@ export default function ManageRewardActions() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.backLink}>Zurück</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Zurück</Text>
           </TouchableOpacity>
           <Text style={styles.pageTitle}>Prämien-Aktionen verwalten</Text>
-          <View style={{ width: 60 }} />
         </View>
 
         <Text style={styles.helperText}>
@@ -390,13 +390,44 @@ export default function ManageRewardActions() {
           />
 
           <Text style={styles.label}>Sortierung (Order)</Text>
-          <TextInput
-            style={styles.input}
-            value={rewardActionOrder}
-            onChangeText={setRewardActionOrder}
-            placeholder="1 = oben"
-            keyboardType="number-pad"
-          />
+          <TouchableOpacity
+            style={[styles.input, styles.dropdownTrigger, { paddingVertical: 6 }]}
+            onPress={() => setOrderDropdownOpen((prev) => !prev)}
+          >
+            <Text style={styles.dropdownTriggerText}>
+              {rewardActionOrder ? `Position ${rewardActionOrder}` : "Bitte wählen (1-10)"}
+            </Text>
+            <Text style={styles.dropdownChevron}>{orderDropdownOpen ? "▲" : "▼"}</Text>
+          </TouchableOpacity>
+          {orderDropdownOpen && (
+            <View style={[styles.dropdownList, { marginTop: 8 }]}>
+              {[...Array(10)].map((_, idx) => {
+                const value = String(idx + 1);
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.dropdownItem,
+                      rewardActionOrder === value && styles.dropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setRewardActionOrder(value);
+                      setOrderDropdownOpen(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        rewardActionOrder === value && styles.dropdownItemTextActive,
+                      ]}
+                    >
+                      {value}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
@@ -698,6 +729,39 @@ const styles = StyleSheet.create({
   },
   actionButtonDisabled: {
     opacity: 0.6,
+  },
+  dropdownTrigger: {
+    justifyContent: "center",
+  },
+  dropdownList: {
+    borderWidth: 1,
+    borderColor: "#e1d3c5",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    marginTop: 6,
+  },
+  dropdownChevron: {
+    fontSize: 14,
+    color: "#777",
+    position: "absolute",
+    right: 12,
+  },
+  dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#eaded1",
+  },
+  dropdownItemActive: {
+    backgroundColor: "#fdf4ea",
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  dropdownItemTextActive: {
+    color: "#c49a6c",
+    fontWeight: "700",
   },
   centered: {
     flex: 1,
