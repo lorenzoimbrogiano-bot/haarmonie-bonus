@@ -64,13 +64,13 @@ export default function ManagePushScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
+          <Text style={styles.title}>Push Nachrichten</Text>
           <TouchableOpacity
             onPress={() => router.back()}
             style={[styles.primaryButton, styles.backButton]}
           >
             <Text style={styles.primaryButtonText}>Zurück</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Push Nachrichten</Text>
         </View>
 
         <Text style={styles.subtitle}>

@@ -62,7 +62,7 @@ export default function ManageRewardActions() {
   const [rewardActionTitle, setRewardActionTitle] = useState("");
   const [rewardActionDescription, setRewardActionDescription] = useState("");
   const [rewardActionPoints, setRewardActionPoints] = useState("");
-  const [rewardActionUrl, setRewardActionUrl] = useState("");
+  const [rewardActionUrl, setRewardActionUrl] = useState("https://");
   const [rewardActionOrder, setRewardActionOrder] = useState("");
   const [rewardActionStartDate, setRewardActionStartDate] = useState("");
   const [rewardActionEndDate, setRewardActionEndDate] = useState("");
@@ -164,7 +164,7 @@ export default function ManageRewardActions() {
     setRewardActionTitle("");
     setRewardActionDescription("");
     setRewardActionPoints("");
-    setRewardActionUrl("");
+    setRewardActionUrl("https://");
     setRewardActionOrder("");
     setRewardActionStartDate("");
     setRewardActionEndDate("");
@@ -177,7 +177,7 @@ export default function ManageRewardActions() {
     setRewardActionTitle(action.title);
     setRewardActionDescription(action.description);
     setRewardActionPoints(String(action.points));
-    setRewardActionUrl(action.url || "");
+    setRewardActionUrl(action.url || "https://");
     setRewardActionOrder(typeof action.order === "number" ? String(action.order) : "");
     setRewardActionStartDate(action.startDate || "");
     setRewardActionEndDate(action.endDate || "");
@@ -210,7 +210,9 @@ export default function ManageRewardActions() {
         title,
         description,
         points,
-        url,
+        url: url.replace(/^https?:\/\//, "").trim().length
+          ? `https://${url.replace(/^https?:\/\//, "").trim()}`
+          : "",
         active: rewardActionActive,
         order,
         startDate,
