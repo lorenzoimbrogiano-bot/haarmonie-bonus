@@ -1886,6 +1886,9 @@ const handleSaveCustomerPoints = async () => {
     (a, b) => (a.order ?? 9999) - (b.order ?? 9999)
   );
   const visibleRewardActions = sortedRewardActions.filter(isActionActiveForNow);
+  const hasPendingRewardClaims = sortedRewardActions.some(
+    (action) => selectedCustomerRewardClaims[action.id] === "pending"
+  );
 
   const pendingRedemptions = selectedCustomerRedemptions.filter(
     (r) => r.status !== "approved"
@@ -2452,10 +2455,21 @@ const handleSaveCustomerPoints = async () => {
                       </View>
                       <View style={[styles.pointsCard, { marginTop: 20 }]}>
                         <TouchableOpacity
-                          style={styles.accordionHeader}
+                          style={[
+                            styles.accordionHeader,
+                            pendingRedemptions.length > 0 && styles.redemptionHeader,
+                          ]}
                           onPress={() => setRedemptionsExpanded((prev) => !prev)}
                         >
-                          <Text style={styles.sectionTitle}>Prämien-Einlösungen</Text>
+                          <Text
+                            style={[
+                              styles.sectionTitle,
+                              pendingRedemptions.length > 0 &&
+                                styles.redemptionHeaderTitle,
+                            ]}
+                          >
+                            Prämien-Einlösungen
+                          </Text>
                           <Text style={styles.accordionChevron}>
                             {redemptionsExpanded ? "▼" : "▶"}
                           </Text>
@@ -2561,10 +2575,20 @@ const handleSaveCustomerPoints = async () => {
                       </View>
                       <View style={[styles.pointsCard, { marginTop: 20 }]}>
                         <TouchableOpacity
-                          style={styles.accordionHeader}
+                          style={[
+                            styles.accordionHeader,
+                            hasPendingRewardClaims && styles.redemptionHeader,
+                          ]}
                           onPress={() => setRewardActionsExpanded((prev) => !prev)}
                         >
-                          <Text style={styles.sectionTitle}>Prämien-Aktionen freischalten</Text>
+                          <Text
+                            style={[
+                              styles.sectionTitle,
+                              hasPendingRewardClaims && styles.redemptionHeaderTitle,
+                            ]}
+                          >
+                            Prämien-Aktionen freischalten
+                          </Text>
                           <Text style={styles.accordionChevron}>
                             {rewardActionsExpanded ? "\u25BC" : "\u25B6"}
                           </Text>
@@ -3420,6 +3444,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#555",
     fontWeight: "600",
+  },
+  redemptionHeader: {
+    backgroundColor: "#e9f7ef",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+  },
+  redemptionHeaderTitle: {
+    color: "#256029",
   },
   adminActionButton: {
   backgroundColor: "#c49a6c",
