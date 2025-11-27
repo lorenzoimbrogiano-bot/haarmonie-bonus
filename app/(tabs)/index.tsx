@@ -888,13 +888,16 @@ useEffect(() => {
 
       rows.push(
         [
-          "Name",
+          "Vorname",
+          "Nachname",
+          "Name (vollständig)",
           "E-Mail",
           "Telefon",
           "Straße",
           "PLZ",
           "Ort",
           "Punkte",
+          "Marketing-Einwilligung",
           "Registriert am",
         ].join(";")
       );
@@ -902,7 +905,9 @@ useEffect(() => {
       snapshot.forEach((docSnap) => {
         const data = docSnap.data() as any;
 
-        const name = data.name || "";
+        const firstName = data.firstName || "";
+        const lastName = data.lastName || "";
+        const name = data.name || `${firstName} ${lastName}`.trim();
         const email = data.email || "";
         const phone = data.phone || "";
         const street = data.street || "";
@@ -910,6 +915,8 @@ useEffect(() => {
         const city = data.city || "";
         const points =
           typeof data.points === "number" ? data.points.toString() : "0";
+        const marketingConsent =
+          data.marketingConsent === true ? "Ja" : data.marketingConsent === false ? "Nein" : "";
         const createdAt =
           data.createdAt && data.createdAt.toDate
             ? data.createdAt.toDate().toISOString()
@@ -917,6 +924,8 @@ useEffect(() => {
 
         rows.push(
           [
+            firstName,
+            lastName,
             name,
             email,
             phone,
@@ -924,6 +933,7 @@ useEffect(() => {
             zip,
             city,
             points,
+            marketingConsent,
             createdAt,
           ].map((value) => `"${(value || "").replace(/"/g, '""')}"`).join(";")
         );
