@@ -90,6 +90,9 @@ async function sendBirthdayCoupons(forDate = new Date(), { dryRun = false } = {}
       await docSnap.ref.update({
         lastBirthdayGiftYear: year,
         lastBirthdayGiftSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        birthdayVoucherAvailable: true,
+        birthdayVoucherYear: year,
+        birthdayVoucherRedeemedYear: admin.firestore.FieldValue.delete(),
       });
     }
   }

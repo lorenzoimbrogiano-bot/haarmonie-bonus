@@ -120,6 +120,10 @@ type Customer = {
   dateOfBirth?: string;
   birthDay?: number;
   birthMonth?: number;
+  birthdayVoucherAvailable?: boolean;
+  birthdayVoucherYear?: number;
+  birthdayVoucherRedeemedYear?: number;
+  lastBirthdayGiftYear?: number;
   phone?: string;
   street?: string;
   zip?: string;
@@ -191,6 +195,8 @@ export default function BonusApp() {
   const [rewardClaims, setRewardClaims] = useState<Record<string, string | boolean>>({});
   const [rewardClaimBusy, setRewardClaimBusy] = useState<string | null>(null);
   const [rewardExpandedId, setRewardExpandedId] = useState<string | null>(null);
+  const [birthdayVoucherAvailable, setBirthdayVoucherAvailable] = useState(false);
+  const [birthdayVoucherYear, setBirthdayVoucherYear] = useState<number | null>(null);
   const [rewardActions, setRewardActions] = useState<RewardAction[]>([]);
   const [rewardActionsLoading, setRewardActionsLoading] = useState(false);
   const [rewardActionsBusyId, setRewardActionsBusyId] = useState<string | null>(null);
@@ -210,6 +216,7 @@ export default function BonusApp() {
     Record<string, string | boolean>
   >({});
   const [adminRewardBusy, setAdminRewardBusy] = useState<string | null>(null);
+  const [adminBirthdayBusy, setAdminBirthdayBusy] = useState(false);
   const [selectedCustomerRedemptions, setSelectedCustomerRedemptions] = useState<
     RewardRedemption[]
   >([]);
@@ -400,6 +407,8 @@ useEffect(() => {
       let nameFromDb = "";
       let pointsFromDb = 50;
       let claimsFromDb: Record<string, string | boolean> = {};
+      let voucherAvailable = false;
+      let voucherYear: number | null = null;
 
       if (snap.exists()) {
         const data = snap.data() as any;
@@ -411,6 +420,11 @@ useEffect(() => {
           data.rewardClaims && typeof data.rewardClaims === "object"
             ? data.rewardClaims
             : {};
+        voucherAvailable = data.birthdayVoucherAvailable === true;
+        voucherYear =
+          typeof data.birthdayVoucherYear === "number"
+            ? data.birthdayVoucherYear
+            : null;
       } else {
       await setDoc(userRef, {
         email: fallbackEmail,
@@ -443,6 +457,8 @@ useEffect(() => {
       });
       setPoints(pointsFromDb);
       setRewardClaims(claimsFromDb);
+      setBirthdayVoucherAvailable(voucherAvailable);
+      setBirthdayVoucherYear(voucherYear);
 
       try {
         const visitsRef = collection(userRef, "visits");
@@ -519,9 +535,16 @@ useEffect(() => {
             : {};
         const nameFromDb = data.name || firebaseUser.name || "";
         const emailFromDb = data.email || firebaseUser.email || "";
+        const voucherAvailable = data.birthdayVoucherAvailable === true;
+        const voucherYear =
+          typeof data.birthdayVoucherYear === "number"
+            ? data.birthdayVoucherYear
+            : null;
 
         setPoints(pointsFromDb);
         setRewardClaims(claimsFromDb);
+        setBirthdayVoucherAvailable(voucherAvailable);
+        setBirthdayVoucherYear(voucherYear);
         setFirebaseUser((prev) =>
           prev
             ? {
@@ -920,6 +943,19 @@ useEffect(() => {
           dateOfBirth: data.dateOfBirth || "",
           birthDay: typeof data.birthDay === "number" ? data.birthDay : undefined,
           birthMonth: typeof data.birthMonth === "number" ? data.birthMonth : undefined,
+          birthdayVoucherAvailable: data.birthdayVoucherAvailable === true,
+          birthdayVoucherYear:
+            typeof data.birthdayVoucherYear === "number"
+              ? data.birthdayVoucherYear
+              : undefined,
+          birthdayVoucherRedeemedYear:
+            typeof data.birthdayVoucherRedeemedYear === "number"
+              ? data.birthdayVoucherRedeemedYear
+              : undefined,
+          lastBirthdayGiftYear:
+            typeof data.lastBirthdayGiftYear === "number"
+              ? data.lastBirthdayGiftYear
+              : undefined,
           phone: data.phone || "",
           street: data.street || "",
           zip: data.zip || "",
@@ -1073,14 +1109,16 @@ useEffect(() => {
       setCustomerEditExpanded(false);
       setCustomerEditUnlocked(false);
       setCustomerPasswordInput("");
-      setCustomerPasswordError("");
-      setEditCustomerName("");
-      setEditCustomerEmail("");
-      setEditCustomerDateOfBirth("");
-      setEditCustomerPhone("");
-      setEditCustomerStreet("");
-      setEditCustomerZip("");
-      setEditCustomerCity("");
+    setCustomerPasswordError("");
+    setEditCustomerName("");
+    setEditCustomerEmail("");
+    setBirthdayVoucherAvailable(false);
+    setBirthdayVoucherYear(null);
+    setEditCustomerDateOfBirth("");
+    setEditCustomerPhone("");
+    setEditCustomerStreet("");
+    setEditCustomerZip("");
+    setEditCustomerCity("");
       return;
     }
 
@@ -1102,6 +1140,10 @@ useEffect(() => {
     setCustomerPasswordError("");
     setEditCustomerName(c.name || "");
     setEditCustomerEmail(c.email || "");
+    setBirthdayVoucherAvailable(c.birthdayVoucherAvailable === true);
+    setBirthdayVoucherYear(
+      typeof c.birthdayVoucherYear === "number" ? c.birthdayVoucherYear : null
+    );
     setEditCustomerDateOfBirth(c.dateOfBirth || "");
     setEditCustomerPhone(c.phone || "");
     setEditCustomerStreet(c.street || "");
@@ -1165,8 +1207,37 @@ const registerForPushNotificationsAsync = async (uid: string) => {
           createdAt: serverTimestamp(),
         })
       )
-    );
-  };
+  );
+};
+
+const BirthdayVoucherCard = ({
+  visible,
+  year,
+  onInfoPress,
+}: {
+  visible: boolean;
+  year: number | null;
+  onInfoPress?: () => void;
+}) => {
+  if (!visible) return null;
+  return (
+    <View style={[styles.pointsCard, { marginBottom: 16 }]}>
+      <Text style={styles.sectionTitle}>Geburtstags-Gutschein</Text>
+      <Text style={styles.modalText}>
+        Dein 5€ Geburtstags-Gutschein ist aktiv.
+        {year ? ` (Jahr: ${year})` : ""}
+      </Text>
+      {onInfoPress ? (
+        <TouchableOpacity
+          style={[styles.secondaryButton, { marginTop: 8 }]}
+          onPress={onInfoPress}
+        >
+          <Text style={styles.secondaryButtonText}>Info</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+};
 
   const handleOpenPushNavigation = () => {
     setPushPasswordError("");
@@ -1297,7 +1368,7 @@ const handleSaveCustomerPoints = async () => {
         name,
         email,
         dateOfBirth: normalizedBirthDate,
-        ...getBirthDayMonth(normalizedBirthDate || null),
+        ...(normalizedBirthDate ? getBirthDayMonth(normalizedBirthDate) : {}),
         phone,
         street,
         zip,
@@ -1307,7 +1378,19 @@ const handleSaveCustomerPoints = async () => {
       // ausgewählten Kunden im State aktualisieren
       setSelectedCustomer((prev: any) =>
         prev && prev.id === selectedCustomer.id
-          ? { ...prev, name, email, dateOfBirth: normalizedBirthDate, phone, street, zip, city }
+          ? {
+              ...prev,
+              name,
+              email,
+              dateOfBirth: normalizedBirthDate,
+              ...(normalizedBirthDate
+                ? getBirthDayMonth(normalizedBirthDate)
+                : { birthDay: undefined, birthMonth: undefined }),
+              phone,
+              street,
+              zip,
+              city,
+            }
           : prev
       );
 
@@ -1315,7 +1398,19 @@ const handleSaveCustomerPoints = async () => {
       setCustomers((prev: any[]) =>
         prev.map((c) =>
           c.id === selectedCustomer.id
-            ? { ...c, name, email, dateOfBirth: normalizedBirthDate, phone, street, zip, city }
+            ? {
+                ...c,
+                name,
+                email,
+                dateOfBirth: normalizedBirthDate,
+                ...(normalizedBirthDate
+                  ? getBirthDayMonth(normalizedBirthDate)
+                  : { birthDay: undefined, birthMonth: undefined }),
+                phone,
+                street,
+                zip,
+                city,
+              }
             : c
         )
       );
@@ -1326,6 +1421,56 @@ const handleSaveCustomerPoints = async () => {
     } catch (err) {
       console.error("Fehler beim Aktualisieren der Kundendaten:", err);
       Alert.alert("Fehler", "Die Kundendaten konnten nicht gespeichert werden.");
+    }
+  };
+
+  const handleRedeemBirthdayVoucher = async () => {
+    if (!selectedCustomer) return;
+    if (!selectedCustomer.birthdayVoucherAvailable) {
+      Alert.alert("Nicht verfügbar", "Kein Geburtstags-Gutschein aktiv.");
+      return;
+    }
+    if (adminBirthdayBusy) return;
+
+    setAdminBirthdayBusy(true);
+    try {
+      const userRef = doc(db, "users", selectedCustomer.id);
+      await updateDoc(userRef, {
+        birthdayVoucherAvailable: false,
+        birthdayVoucherRedeemedYear: new Date().getFullYear(),
+      });
+
+      const visitsRef = collection(userRef, "visits");
+      await addDoc(visitsRef, {
+        createdAt: serverTimestamp(),
+        amount: -5,
+        points: 0,
+        reason: "Geburtstags-Gutschein eingelöst",
+        source: "birthday-voucher",
+        employeeName: rewardEmployeeName || editEmployeeName || "",
+      });
+
+      setSelectedCustomer((prev: any) =>
+        prev && prev.id === selectedCustomer.id
+          ? { ...prev, birthdayVoucherAvailable: false }
+          : prev
+      );
+      setCustomers((prev: any[]) =>
+        prev.map((c) =>
+          c.id === selectedCustomer.id
+            ? { ...c, birthdayVoucherAvailable: false }
+            : c
+        )
+      );
+      if (selectedCustomer.id === firebaseUser?.uid) {
+        setBirthdayVoucherAvailable(false);
+      }
+      Alert.alert("Eingelöst", "Der Geburtstags-Gutschein wurde markiert.");
+    } catch (err) {
+      console.error("Fehler beim Einlösen des Gutscheins:", err);
+      Alert.alert("Fehler", "Gutschein konnte nicht eingelöst werden.");
+    } finally {
+      setAdminBirthdayBusy(false);
     }
   };
 
@@ -2107,11 +2252,11 @@ const handleSaveCustomerPoints = async () => {
     approvedRedemptions.length - visibleApprovedRedemptions.length
   );
 
-  const renderRedemptionRow = (r: RewardRedemption) => {
-    const busy = redemptionBusyId === r.id;
-    const pending = r.status !== "approved";
+const renderRedemptionRow = (r: RewardRedemption) => {
+  const busy = redemptionBusyId === r.id;
+  const pending = r.status !== "approved";
 
-    return (
+  return (
       <View key={r.id} style={styles.redemptionCard}>
         <View style={{ flex: 1 }}>
           <Text style={styles.redemptionTitle}>{r.title}</Text>
@@ -2254,6 +2399,11 @@ const handleSaveCustomerPoints = async () => {
                 <Text style={styles.primaryButtonText}>Prämien ansehen</Text>
               </TouchableOpacity>
             </View>
+
+            <BirthdayVoucherCard
+              visible={birthdayVoucherAvailable}
+              year={birthdayVoucherYear}
+            />
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Prämien-Aktionen</Text>
@@ -2859,6 +3009,33 @@ const handleSaveCustomerPoints = async () => {
                             )}
                           </>
                         )}
+                      </View>
+                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                        <Text style={styles.sectionTitle}>Geburtstags-Gutschein</Text>
+                        <Text style={styles.modalText}>
+                          Markiere den 5€-Gutschein als eingelöst, wenn der Kunde ihn nutzt.
+                        </Text>
+                        <TouchableOpacity
+                          style={[
+                            styles.adminActionButton,
+                            styles.actionButton,
+                            (!selectedCustomer?.birthdayVoucherAvailable || adminBirthdayBusy) &&
+                              styles.actionButtonDisabled,
+                            { marginTop: 6 },
+                          ]}
+                          disabled={
+                            !selectedCustomer?.birthdayVoucherAvailable || adminBirthdayBusy
+                          }
+                          onPress={handleRedeemBirthdayVoucher}
+                        >
+                          <Text style={styles.primaryButtonText}>
+                            {selectedCustomer?.birthdayVoucherAvailable
+                              ? adminBirthdayBusy
+                                ? "Bitte warten..."
+                                : "Gutschein einlösen"
+                              : "Kein Gutschein verfügbar"}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
 
                       {/* Kundendaten bearbeiten */}
