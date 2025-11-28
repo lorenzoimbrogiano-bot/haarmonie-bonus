@@ -197,6 +197,7 @@ export default function BonusApp() {
   const [rewardExpandedId, setRewardExpandedId] = useState<string | null>(null);
   const [birthdayVoucherAvailable, setBirthdayVoucherAvailable] = useState(false);
   const [birthdayVoucherYear, setBirthdayVoucherYear] = useState<number | null>(null);
+  const [birthdayVoucherRedeemedYear, setBirthdayVoucherRedeemedYear] = useState<number | null>(null);
   const [rewardActions, setRewardActions] = useState<RewardAction[]>([]);
   const [rewardActionsLoading, setRewardActionsLoading] = useState(false);
   const [rewardActionsBusyId, setRewardActionsBusyId] = useState<string | null>(null);
@@ -385,6 +386,33 @@ useEffect(() => {
     return { birthDay: Number(match[1]), birthMonth: Number(match[2]) };
   };
 
+  const computeBirthdayVoucherState = (data: any) => {
+    const nowYear = new Date().getFullYear();
+    const voucherAvailable = data?.birthdayVoucherAvailable === true;
+    const voucherYear =
+      typeof data?.birthdayVoucherYear === "number" ? data.birthdayVoucherYear : null;
+    const redeemedYear =
+      typeof data?.birthdayVoucherRedeemedYear === "number"
+        ? data.birthdayVoucherRedeemedYear
+        : null;
+    const lastGiftYear =
+      typeof data?.lastBirthdayGiftYear === "number" ? data.lastBirthdayGiftYear : null;
+
+    // Fallback: wenn keine Flags, aber Geschenk dieses Jahr gesendet und nicht eingelöst
+    const derivedAvailable =
+      voucherAvailable ||
+      (!!lastGiftYear &&
+        lastGiftYear === nowYear &&
+        (voucherYear === null || voucherYear === nowYear) &&
+        redeemedYear !== nowYear);
+
+    return {
+      available: derivedAvailable,
+      year: voucherYear ?? lastGiftYear ?? null,
+      redeemedYear,
+    };
+  };
+
   const formatBirthDateFromDate = (d: Date) => {
     const day = String(d.getDate()).padStart(2, "0");
     const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -409,6 +437,7 @@ useEffect(() => {
       let claimsFromDb: Record<string, string | boolean> = {};
       let voucherAvailable = false;
       let voucherYear: number | null = null;
+      let voucherRedeemedYear: number | null = null;
 
       if (snap.exists()) {
         const data = snap.data() as any;
@@ -420,11 +449,10 @@ useEffect(() => {
           data.rewardClaims && typeof data.rewardClaims === "object"
             ? data.rewardClaims
             : {};
-        voucherAvailable = data.birthdayVoucherAvailable === true;
-        voucherYear =
-          typeof data.birthdayVoucherYear === "number"
-            ? data.birthdayVoucherYear
-            : null;
+        const voucher = computeBirthdayVoucherState(data);
+        voucherAvailable = voucher.available;
+        voucherYear = voucher.year;
+        voucherRedeemedYear = voucher.redeemedYear;
       } else {
       await setDoc(userRef, {
         email: fallbackEmail,
@@ -459,6 +487,7 @@ useEffect(() => {
       setRewardClaims(claimsFromDb);
       setBirthdayVoucherAvailable(voucherAvailable);
       setBirthdayVoucherYear(voucherYear);
+      setBirthdayVoucherRedeemedYear(voucherRedeemedYear);
 
       try {
         const visitsRef = collection(userRef, "visits");
@@ -535,16 +564,13 @@ useEffect(() => {
             : {};
         const nameFromDb = data.name || firebaseUser.name || "";
         const emailFromDb = data.email || firebaseUser.email || "";
-        const voucherAvailable = data.birthdayVoucherAvailable === true;
-        const voucherYear =
-          typeof data.birthdayVoucherYear === "number"
-            ? data.birthdayVoucherYear
-            : null;
+        const voucher = computeBirthdayVoucherState(data);
 
         setPoints(pointsFromDb);
         setRewardClaims(claimsFromDb);
-        setBirthdayVoucherAvailable(voucherAvailable);
-        setBirthdayVoucherYear(voucherYear);
+        setBirthdayVoucherAvailable(voucher.available);
+        setBirthdayVoucherYear(voucher.year);
+        setBirthdayVoucherRedeemedYear(voucher.redeemedYear);
         setFirebaseUser((prev) =>
           prev
             ? {
@@ -935,6 +961,7 @@ useEffect(() => {
       const list: Customer[] = [];
       snap.forEach((d) => {
         const data = d.data() as any;
+        const voucher = computeBirthdayVoucherState(data);
         list.push({
           id: d.id,
           name: data.name || "",
@@ -943,15 +970,9 @@ useEffect(() => {
           dateOfBirth: data.dateOfBirth || "",
           birthDay: typeof data.birthDay === "number" ? data.birthDay : undefined,
           birthMonth: typeof data.birthMonth === "number" ? data.birthMonth : undefined,
-          birthdayVoucherAvailable: data.birthdayVoucherAvailable === true,
-          birthdayVoucherYear:
-            typeof data.birthdayVoucherYear === "number"
-              ? data.birthdayVoucherYear
-              : undefined,
-          birthdayVoucherRedeemedYear:
-            typeof data.birthdayVoucherRedeemedYear === "number"
-              ? data.birthdayVoucherRedeemedYear
-              : undefined,
+          birthdayVoucherAvailable: voucher.available,
+          birthdayVoucherYear: voucher.year ?? undefined,
+          birthdayVoucherRedeemedYear: voucher.redeemedYear ?? undefined,
           lastBirthdayGiftYear:
             typeof data.lastBirthdayGiftYear === "number"
               ? data.lastBirthdayGiftYear
@@ -1138,11 +1159,15 @@ useEffect(() => {
     setCustomerEditUnlocked(false);
     setCustomerPasswordInput("");
     setCustomerPasswordError("");
+    const voucher = computeBirthdayVoucherState(c);
     setEditCustomerName(c.name || "");
     setEditCustomerEmail(c.email || "");
-    setBirthdayVoucherAvailable(c.birthdayVoucherAvailable === true);
+    setBirthdayVoucherAvailable(voucher.available);
     setBirthdayVoucherYear(
-      typeof c.birthdayVoucherYear === "number" ? c.birthdayVoucherYear : null
+      typeof voucher.year === "number" ? voucher.year : null
+    );
+    setBirthdayVoucherRedeemedYear(
+      typeof voucher.redeemedYear === "number" ? voucher.redeemedYear : null
     );
     setEditCustomerDateOfBirth(c.dateOfBirth || "");
     setEditCustomerPhone(c.phone || "");
@@ -1386,6 +1411,9 @@ const handleSaveCustomerPoints = async () => {
               ...(normalizedBirthDate
                 ? getBirthDayMonth(normalizedBirthDate)
                 : { birthDay: undefined, birthMonth: undefined }),
+              birthdayVoucherAvailable: prev.birthdayVoucherAvailable,
+              birthdayVoucherYear: prev.birthdayVoucherYear,
+              birthdayVoucherRedeemedYear: prev.birthdayVoucherRedeemedYear,
               phone,
               street,
               zip,
@@ -1406,6 +1434,9 @@ const handleSaveCustomerPoints = async () => {
                 ...(normalizedBirthDate
                   ? getBirthDayMonth(normalizedBirthDate)
                   : { birthDay: undefined, birthMonth: undefined }),
+                birthdayVoucherAvailable: c.birthdayVoucherAvailable,
+                birthdayVoucherYear: c.birthdayVoucherYear,
+                birthdayVoucherRedeemedYear: c.birthdayVoucherRedeemedYear,
                 phone,
                 street,
                 zip,
@@ -1440,11 +1471,11 @@ const handleSaveCustomerPoints = async () => {
         birthdayVoucherRedeemedYear: new Date().getFullYear(),
       });
 
-      const visitsRef = collection(userRef, "visits");
-      await addDoc(visitsRef, {
-        createdAt: serverTimestamp(),
-        amount: -5,
-        points: 0,
+    const visitsRef = collection(userRef, "visits");
+    await addDoc(visitsRef, {
+      createdAt: serverTimestamp(),
+      amount: -5,
+      points: 0,
         reason: "Geburtstags-Gutschein eingelöst",
         source: "birthday-voucher",
         employeeName: rewardEmployeeName || editEmployeeName || "",
