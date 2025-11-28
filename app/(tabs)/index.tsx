@@ -11,14 +11,14 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  Easing,
   Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
-  Animated,
-  Easing,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Switch,
@@ -27,8 +27,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import ConfettiCannon from "react-native-confetti-cannon";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   addDoc,
@@ -1335,14 +1335,14 @@ const BirthdayVoucherCard = ({
         <Text style={styles.birthdayAmount}>5 €</Text>
         <Text style={styles.birthdaySubtitle}>
           Dein Geburtstags-Gutschein ist aktiv.
-          {year ? ` Gültig im Jahr ${year}.` : ""}
+          {year ? `\nGültig für 12 Monate` : ""}
         </Text>
         <TouchableOpacity
           onPress={onBookPress}
-          style={styles.birthdayButton}
+          style={[styles.primaryButton, { marginTop: 10 }]}
           activeOpacity={0.9}
         >
-          <Text style={styles.birthdayButtonText}>Jetzt Termin sichern</Text>
+          <Text style={styles.primaryButtonText}>Jetzt Termin sichern</Text>
         </TouchableOpacity>
         <ConfettiCannon
           key={confettiKey}
