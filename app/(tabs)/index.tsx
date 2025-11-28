@@ -49,6 +49,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
 
 import { auth, db } from "../../src/firebaseConfig";
 
@@ -114,6 +117,7 @@ type Customer = {
   name: string;
   email: string;
   points: number;
+  dateOfBirth?: string;
   phone?: string;
   street?: string;
   zip?: string;
@@ -169,11 +173,15 @@ export default function BonusApp() {
   // Registrierung – Stammdaten
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [street, setStreet] = useState("");
   const [zip, setZip] = useState("");
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
   const [consentMarketing, setConsentMarketing] = useState(false);
+  const [birthDatePickerVisible, setBirthDatePickerVisible] = useState(false);
+  const [birthDatePickerDate, setBirthDatePickerDate] = useState<Date | null>(null);
+  const [birthDatePickerTarget, setBirthDatePickerTarget] = useState<"register" | "edit" | null>(null);
 
   // Kundensicht (eigene Punkte)
   const [points, setPoints] = useState(0);
@@ -222,6 +230,7 @@ export default function BonusApp() {
   const [redemptionsExpanded, setRedemptionsExpanded] = useState(false);
   const [editCustomerName, setEditCustomerName] = useState<string>("");
   const [editCustomerEmail, setEditCustomerEmail] = useState<string>("");
+  const [editCustomerDateOfBirth, setEditCustomerDateOfBirth] = useState<string>("");
   const [editCustomerPhone, setEditCustomerPhone] = useState<string>("");
   const [editCustomerStreet, setEditCustomerStreet] = useState<string>("");
   const [editCustomerZip, setEditCustomerZip] = useState<string>("");
@@ -254,6 +263,7 @@ useEffect(() => {
   if (selectedCustomer) {
     setEditCustomerName(selectedCustomer.name || "");
     setEditCustomerEmail(selectedCustomer.email || "");
+    setEditCustomerDateOfBirth(selectedCustomer.dateOfBirth || "");
     setEditCustomerPhone(selectedCustomer.phone || "");
     setEditCustomerStreet(selectedCustomer.street || "");
     setEditCustomerZip(selectedCustomer.zip || "");
@@ -261,6 +271,7 @@ useEffect(() => {
   } else {
     setEditCustomerName("");
     setEditCustomerEmail("");
+    setEditCustomerDateOfBirth("");
     setEditCustomerPhone("");
     setEditCustomerStreet("");
     setEditCustomerZip("");
@@ -313,6 +324,58 @@ useEffect(() => {
     return ALLOWED_ADMINS.includes(mail.toLowerCase());
   };
 
+  // Hilfsfunktion: Geburtsdatum validieren & vereinheitlichen (TT.MM.JJJJ)
+  const normalizeBirthDate = (value: string) => {
+    const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value.trim());
+    if (!match) return null;
+
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+
+    const date = new Date(year, month - 1, day);
+    const isValidDate =
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day;
+
+    if (!isValidDate) return null;
+
+    const today = new Date();
+    if (date > today) return null;
+
+    return `${String(day).padStart(2, "0")}.${String(month).padStart(2, "0")}.${year}`;
+  };
+
+  const parseBirthDate = (value: string) => {
+    const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value.trim());
+    if (!match) return null;
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+    const d = new Date(year, month - 1, day);
+    if (
+      d.getFullYear() === year &&
+      d.getMonth() === month - 1 &&
+      d.getDate() === day
+    ) {
+      return d;
+    }
+    return null;
+  };
+
+  const defaultBirthDate = () => {
+    const today = new Date();
+    return new Date(today.getFullYear() - 25, today.getMonth(), today.getDate());
+  };
+
+  const formatBirthDateFromDate = (d: Date) => {
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}.${month}.${year}`;
+  };
+
   // -----------------------------------
   // Kundendaten (eigener User) laden
   // -----------------------------------
@@ -320,7 +383,7 @@ useEffect(() => {
     async (
       uid: string,
       fallbackEmail: string,
-      defaults?: { firstName?: string; lastName?: string }
+      defaults?: { firstName?: string; lastName?: string; dateOfBirth?: string }
     ) => {
       const userRef = doc(db, "users", uid);
       const snap = await getDoc(userRef);
@@ -345,6 +408,7 @@ useEffect(() => {
           firstName: (defaults?.firstName || "").trim(),
           lastName: (defaults?.lastName || "").trim(),
           name: `${(defaults?.firstName || "").trim()} ${(defaults?.lastName || "").trim()}`.trim(),
+          dateOfBirth: (defaults?.dateOfBirth || "").trim(),
           street: "",
           zip: "",
           city: "",
@@ -645,6 +709,7 @@ useEffect(() => {
 
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPassword = password.trim();
+    let normalizedBirthDate = "";
 
     if (!trimmedEmail) {
       setAuthError("Bitte gib deine E-Mail-Adresse ein.");
@@ -665,6 +730,14 @@ useEffect(() => {
         setAuthError("Bitte gib deinen Nachnamen ein.");
         return;
       }
+      const normalized = normalizeBirthDate(birthDate);
+      if (!normalized) {
+        setAuthError(
+          "Bitte gib dein Geburtsdatum im Format TT.MM.JJJJ ein (kein Datum in der Zukunft)."
+        );
+        return;
+      }
+      normalizedBirthDate = normalized;
       if (!street.trim()) {
         setAuthError("Bitte gib deine Straße ein.");
         return;
@@ -709,6 +782,7 @@ useEffect(() => {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          dateOfBirth: normalizedBirthDate,
           street: street.trim(),
           zip: zip.trim(),
           city: city.trim(),
@@ -731,6 +805,7 @@ useEffect(() => {
         await loadUserData(uid, trimmedEmail, {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
+          dateOfBirth: normalizedBirthDate,
         });
         setIsRegisterMode(false); // nach Registrierung zurück auf Login-Ansicht
       } else {
@@ -831,6 +906,7 @@ useEffect(() => {
           name: data.name || "",
           email: data.email || "",
           points: typeof data.points === "number" ? data.points : 0,
+          dateOfBirth: data.dateOfBirth || "",
           phone: data.phone || "",
           street: data.street || "",
           zip: data.zip || "",
@@ -890,6 +966,7 @@ useEffect(() => {
         [
           "Vorname",
           "Nachname",
+          "Geburtsdatum",
           "Name (vollständig)",
           "E-Mail",
           "Telefon",
@@ -908,6 +985,7 @@ useEffect(() => {
         const firstName = data.firstName || "";
         const lastName = data.lastName || "";
         const name = data.name || `${firstName} ${lastName}`.trim();
+        const dateOfBirth = data.dateOfBirth || "";
         const email = data.email || "";
         const phone = data.phone || "";
         const street = data.street || "";
@@ -926,6 +1004,7 @@ useEffect(() => {
           [
             firstName,
             lastName,
+            dateOfBirth,
             name,
             email,
             phone,
@@ -984,6 +1063,7 @@ useEffect(() => {
       setCustomerPasswordError("");
       setEditCustomerName("");
       setEditCustomerEmail("");
+      setEditCustomerDateOfBirth("");
       setEditCustomerPhone("");
       setEditCustomerStreet("");
       setEditCustomerZip("");
@@ -1009,6 +1089,7 @@ useEffect(() => {
     setCustomerPasswordError("");
     setEditCustomerName(c.name || "");
     setEditCustomerEmail(c.email || "");
+    setEditCustomerDateOfBirth(c.dateOfBirth || "");
     setEditCustomerPhone(c.phone || "");
     setEditCustomerStreet(c.street || "");
     setEditCustomerZip(c.zip || "");
@@ -1169,6 +1250,7 @@ const handleSaveCustomerPoints = async () => {
 
     const name = editCustomerName.trim();
     const email = editCustomerEmail.trim();
+    const birthDate = editCustomerDateOfBirth.trim();
     const phone = editCustomerPhone.trim();
     const street = editCustomerStreet.trim();
     const zip = editCustomerZip.trim();
@@ -1182,12 +1264,26 @@ const handleSaveCustomerPoints = async () => {
       return;
     }
 
+    let normalizedBirthDate = "";
+    if (birthDate) {
+      const normalized = normalizeBirthDate(birthDate);
+      if (!normalized) {
+        Alert.alert(
+          "Geburtsdatum prǬfen",
+          "Bitte TT.MM.JJJJ eintragen (kein Datum in der Zukunft)."
+        );
+        return;
+      }
+      normalizedBirthDate = normalized;
+    }
+
     try {
       const userRef = doc(db, "users", selectedCustomer.id);
 
       await updateDoc(userRef, {
         name,
         email,
+        dateOfBirth: normalizedBirthDate,
         phone,
         street,
         zip,
@@ -1197,7 +1293,7 @@ const handleSaveCustomerPoints = async () => {
       // ausgewählten Kunden im State aktualisieren
       setSelectedCustomer((prev: any) =>
         prev && prev.id === selectedCustomer.id
-          ? { ...prev, name, email, phone, street, zip, city }
+          ? { ...prev, name, email, dateOfBirth: normalizedBirthDate, phone, street, zip, city }
           : prev
       );
 
@@ -1205,10 +1301,12 @@ const handleSaveCustomerPoints = async () => {
       setCustomers((prev: any[]) =>
         prev.map((c) =>
           c.id === selectedCustomer.id
-            ? { ...c, name, email, phone, street, zip, city }
+            ? { ...c, name, email, dateOfBirth: normalizedBirthDate, phone, street, zip, city }
             : c
         )
       );
+
+      setEditCustomerDateOfBirth(normalizedBirthDate);
 
       Alert.alert("Gespeichert", "Die Kundendaten wurden aktualisiert.");
     } catch (err) {
@@ -1634,6 +1732,66 @@ const handleSaveCustomerPoints = async () => {
     });
   };
 
+  const applyBirthDateSelection = (
+    date: Date | null,
+    targetOverride?: "register" | "edit"
+  ) => {
+    if (!date) return;
+    const formatted = formatBirthDateFromDate(date);
+    const target = targetOverride || birthDatePickerTarget;
+    if (target === "register") {
+      setBirthDate(formatted);
+    } else if (target === "edit") {
+      setEditCustomerDateOfBirth(formatted);
+    }
+  };
+
+  const closeBirthDatePicker = () => {
+    setBirthDatePickerVisible(false);
+    setBirthDatePickerTarget(null);
+    setBirthDatePickerDate(null);
+  };
+
+  const handleBirthDateChange = (event: any, selectedDate?: Date) => {
+    const chosen = selectedDate || birthDatePickerDate || defaultBirthDate();
+    if (Platform.OS === "android") {
+      if (event?.type === "dismissed") {
+        closeBirthDatePicker();
+        return;
+      }
+      applyBirthDateSelection(chosen);
+      closeBirthDatePicker();
+    } else {
+      setBirthDatePickerDate(chosen);
+    }
+  };
+
+  const openBirthDatePicker = (target: "register" | "edit") => {
+    const currentValue =
+      target === "register"
+        ? parseBirthDate(birthDate) || defaultBirthDate()
+        : parseBirthDate(editCustomerDateOfBirth) || defaultBirthDate();
+
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: currentValue,
+        mode: "date",
+        is24Hour: true,
+        maximumDate: new Date(),
+        onChange: (event, selected) => {
+          if (event?.type === "set" && selected) {
+            applyBirthDateSelection(selected, target);
+          }
+        },
+      });
+      return;
+    }
+
+    setBirthDatePickerDate(currentValue);
+    setBirthDatePickerTarget(target);
+    setBirthDatePickerVisible(true);
+  };
+
 
 
   // -----------------------------------
@@ -1780,6 +1938,24 @@ const handleSaveCustomerPoints = async () => {
                   importantForAutofill="yes"
                   autoComplete="tel"
                 />
+              </View>
+
+              <View style={styles.loginField}>
+                <Text style={styles.loginLabel}>Geburtsdatum (TT.MM.JJJJ)*</Text>
+                <TouchableOpacity
+                  style={[styles.loginInput, styles.dateInput]}
+                  activeOpacity={0.7}
+                  onPress={() => openBirthDatePicker("register")}
+                >
+                  <Text
+                    style={[
+                      styles.dateInputText,
+                      birthDate ? styles.dateInputTextValue : null,
+                    ]}
+                  >
+                    {birthDate || "Datum auswählen"}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               <View
@@ -2716,6 +2892,22 @@ const handleSaveCustomerPoints = async () => {
                               autoComplete="email"
                             />
 
+                            <Text style={styles.loginLabel}>Geburtsdatum (TT.MM.JJJJ)</Text>
+                            <TouchableOpacity
+                              style={[styles.loginInput, styles.dateInput]}
+                              activeOpacity={0.7}
+                              onPress={() => openBirthDatePicker("edit")}
+                            >
+                              <Text
+                                style={[
+                                  styles.dateInputText,
+                                  editCustomerDateOfBirth ? styles.dateInputTextValue : null,
+                                ]}
+                              >
+                                {editCustomerDateOfBirth || "Datum auswählen"}
+                              </Text>
+                            </TouchableOpacity>
+
                             <Text style={styles.loginLabel}>Telefon</Text>
                             <TextInput
                               style={styles.loginInput}
@@ -2782,6 +2974,47 @@ const handleSaveCustomerPoints = async () => {
         )}
       </ScrollView>
       </KeyboardAvoidingView>
+
+      {Platform.OS === "ios" && (
+        <Modal
+          visible={birthDatePickerVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={closeBirthDatePicker}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.sectionTitle}>Geburtsdatum auswählen</Text>
+              <DateTimePicker
+                value={birthDatePickerDate || defaultBirthDate()}
+                mode="date"
+                display="spinner"
+                onChange={handleBirthDateChange}
+                maximumDate={new Date()}
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalCancelButton]}
+                  onPress={closeBirthDatePicker}
+                >
+                  <Text style={styles.modalCancelText}>Abbrechen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, { marginLeft: 10 }]}
+                  onPress={() => {
+                    applyBirthDateSelection(
+                      birthDatePickerDate || defaultBirthDate()
+                    );
+                    closeBirthDatePicker();
+                  }}
+                >
+                  <Text style={styles.primaryButtonText}>Übernehmen</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       <Modal
         visible={showFeedbackModal}
@@ -3569,5 +3802,16 @@ adminActionButtonText: {
     color: "#555",
     fontWeight: "600",
     fontSize: 14,
-  }
+  },
+  dateInput: {
+    justifyContent: "center",
+  },
+  dateInputText: {
+    fontSize: 14,
+    color: "#888",
+  },
+  dateInputTextValue: {
+    color: "#333",
+    fontWeight: "500",
+  },
 });
