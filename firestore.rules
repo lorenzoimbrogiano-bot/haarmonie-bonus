@@ -2,64 +2,90 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "info@haarmonie-sha.de";
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Nur Profilfelder dürfen von Kund:innen selbst geändert werden
+    function isSafeProfileUpdate() {
+      return
+        request.resource.data.points == resource.data.points &&
+        request.resource.data.birthdayVoucherAvailable == resource.data.birthdayVoucherAvailable &&
+        request.resource.data.birthdayVoucherYear == resource.data.birthdayVoucherYear &&
+        request.resource.data.birthdayVoucherRedeemedYear == resource.data.birthdayVoucherRedeemedYear &&
+        request.resource.data.lastBirthdayGiftYear == resource.data.lastBirthdayGiftYear &&
+        request.resource.data.birthDay == resource.data.birthDay &&
+        request.resource.data.birthMonth == resource.data.birthMonth;
+    }
+
     // Haupt-Dokument pro Kund:in
     match /users/{uid} {
       // Lesen: alle eingeloggten Nutzer (inkl. Admin)
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
 
-      // Schreiben: Kunde selbst ODER Admin
-      allow write: if request.auth != null
-                   && (request.auth.uid == uid
-                       || request.auth.token.email == "info@haarmonie-sha.de");
+      // Anlegen: Kunde selbst (Registrierung) oder Admin
+      allow create: if isOwner(uid) || isAdmin();
+
+      // Aktualisieren/Löschen: Admin immer; Kunde nur für eigene Profildaten
+      allow update: if isAdmin()
+                    || (isOwner(uid) && isSafeProfileUpdate());
+      allow delete: if isAdmin();
     }
 
     // Unter-Sammlung: Besuchs-Historie
     match /users/{uid}/visits/{visitId} {
       // Lesen: alle eingeloggten Nutzer (inkl. Admin)
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
 
-      // Schreiben: Kunde selbst (über App) ODER Admin
-      allow write: if request.auth != null
-                   && (request.auth.uid == uid
-                       || request.auth.token.email == "info@haarmonie-sha.de");
+      // Anlegen: Admin oder Registrierungseintrag des Users selbst (50 Punkte, Registrierungsbonus)
+      allow create: if isAdmin()
+                    || (isOwner(uid)
+                        && request.resource.data.points == 50
+                        && request.resource.data.amount == null
+                        && request.resource.data.reason == "Registrierungsbonus");
+
+      // Ändern/Löschen: nur Admin
+      allow update, delete: if isAdmin();
     }
 
     // Unter-Sammlung: Push-Tokens
     match /users/{uid}/pushTokens/{tokenId} {
-      allow read, write: if request.auth != null
-                         && (request.auth.uid == uid
-                             || request.auth.token.email == "info@haarmonie-sha.de");
+      allow read, write: if isOwner(uid) || isAdmin();
     }
 
     // Unter-Sammlung: Prämien-Einlösungen
     match /users/{uid}/rewardRedemptions/{redemptionId} {
       // Lesen: alle eingeloggten Nutzer (inkl. Admin)
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
 
       // Schreiben: Kunde selbst (stellt Anfrage) ODER Admin (bestätigt/ändert)
-      allow write: if request.auth != null
-                   && (request.auth.uid == uid
-                       || request.auth.token.email == "info@haarmonie-sha.de");
+      allow write: if isOwner(uid) || isAdmin();
     }
 
     // Sammlung: Prämien-Aktionen (Admin pflegt, Kund:innen lesen)
     match /rewardActions/{actionId} {
       // Lesen: alle eingeloggten Nutzer:innen
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
 
       // Schreiben: nur Admin-E-Mail
-      allow write: if request.auth != null
-                   && request.auth.token.email == "info@haarmonie-sha.de";
+      allow write: if isAdmin();
     }
 
     // Sammlung: Prämien-Übersicht (Kund:innen lesen, Admin pflegt)
     match /rewards/{rewardId} {
       // Lesen: alle eingeloggten Nutzer:innen
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
 
       // Schreiben: nur Admin-E-Mail
-      allow write: if request.auth != null
-                   && request.auth.token.email == "info@haarmonie-sha.de";
+      allow write: if isAdmin();
     }
 
     // Sammlung: App-Feedback (Kund:innen schreiben, optional Admin liest)
@@ -68,8 +94,7 @@ service cloud.firestore {
       allow create: if true;
 
       // Lesen: nur Admin
-      allow read, update, delete: if request.auth != null
-                                  && request.auth.token.email == "info@haarmonie-sha.de";
+      allow read, update, delete: if isAdmin();
     }
   }
 }
