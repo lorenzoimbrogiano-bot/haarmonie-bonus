@@ -45,6 +45,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 import DateTimePicker, {
   DateTimePickerAndroid,
@@ -57,7 +58,10 @@ import {
   signOut,
 } from "firebase/auth";
 
-import { auth, db } from "../../src/firebaseConfig";
+import { auth, db, functions as fbFunctions } from "../../src/firebaseConfig";
+
+const VERIFY_ADMIN_PASSWORD_URL =
+  "https://us-central1-haarmonie-bonus.cloudfunctions.net/verifyAdminPasswordHttp";
 
 // >>> Admin-E-Mails <<<
 const ALLOWED_ADMINS = [
@@ -73,7 +77,6 @@ const EMPLOYEE_NAMES = [
   "Xenia",
 ];
 
-const EXPORT_PASSWORD = "MiaLina&76429074";
 const CLOUD_FUNCTION_PUSH_URL =
   "https://hellohaarmonie-cz1lyrucwa-uc.a.run.app"; // TODO: ersetzen
 
@@ -416,6 +419,22 @@ useEffect(() => {
       redeemedYear,
     };
   };
+
+  const verifyAdminPassword = useCallback(async (input: string) => {
+    const pwd = input.trim();
+    if (!pwd) {
+      throw new Error("PASSWORD_REQUIRED");
+    }
+    const resp = await fetch(VERIFY_ADMIN_PASSWORD_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwd }),
+    });
+    if (!resp.ok) {
+      throw new Error("INVALID_PASSWORD");
+    }
+    return resp.json();
+  }, []);
 
   const formatBirthDateFromDate = (d: Date) => {
     const day = String(d.getDate()).padStart(2, "0");
@@ -1021,14 +1040,16 @@ useEffect(() => {
     }
 
     const providedPassword = exportPasswordInput.trim();
-    if (providedPassword !== EXPORT_PASSWORD) {
-      setExportPasswordError("Passwort ist falsch.");
+    try {
+      setExportPasswordError("");
+      await verifyAdminPassword(providedPassword);
+      setShowExportPasswordModal(false);
+      setExportBusy(true);
+    } catch (e) {
+      console.error("Export Passwortcheck fehlgeschlagen:", e);
+      setExportPasswordError("Passwort ist falsch oder Server nicht erreichbar.");
       return;
     }
-
-    setExportPasswordError("");
-    setShowExportPasswordModal(false);
-    setExportBusy(true);
 
     try {
       const usersRef = collection(db, "users");
@@ -1364,15 +1385,17 @@ const BirthdayVoucherCard = ({
     setShowPushPasswordModal(true);
   };
 
-  const handleConfirmPushNavigation = () => {
-    if (pushPasswordInput.trim() !== EXPORT_PASSWORD) {
-      setPushPasswordError("Passwort ist falsch.");
-      return;
+  const handleConfirmPushNavigation = async () => {
+    try {
+      await verifyAdminPassword(pushPasswordInput);
+      setPushPasswordError("");
+      setPushPasswordInput("");
+      setShowPushPasswordModal(false);
+      router.push("/push-nachrichten");
+    } catch (e) {
+      console.error("Push-Navigation Passwortcheck fehlgeschlagen:", e);
+      setPushPasswordError("Passwort ist falsch oder Server nicht erreichbar.");
     }
-    setPushPasswordError("");
-    setPushPasswordInput("");
-    setShowPushPasswordModal(false);
-    router.push("/push-nachrichten");
   };
 
 const handleSaveCustomerPoints = async () => {
@@ -3537,16 +3560,18 @@ const renderRedemptionRow = (r: RewardRedemption) => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, { marginLeft: 10 }]}
-                onPress={() => {
-                  if (customerPasswordInput.trim() !== EXPORT_PASSWORD) {
-                    setCustomerPasswordError("Passwort ist falsch.");
-                    return;
+                onPress={async () => {
+                  try {
+                    await verifyAdminPassword(customerPasswordInput);
+                    setCustomerPasswordError("");
+                    setCustomerPasswordInput("");
+                    setShowCustomerPasswordModal(false);
+                    setCustomerEditUnlocked(true);
+                    setCustomerEditExpanded(true);
+                  } catch (e) {
+                    console.error("Customer-Edit Passwortcheck fehlgeschlagen:", e);
+                    setCustomerPasswordError("Passwort ist falsch oder Server nicht erreichbar.");
                   }
-                  setCustomerPasswordError("");
-                  setCustomerPasswordInput("");
-                  setShowCustomerPasswordModal(false);
-                  setCustomerEditUnlocked(true);
-                  setCustomerEditExpanded(true);
                 }}
               >
                 <Text style={styles.primaryButtonText}>Freischalten</Text>

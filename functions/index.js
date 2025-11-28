@@ -1,4 +1,4 @@
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -12,7 +12,8 @@ const BIRTHDAY_PUSH_TITLE = "Happy Birthday! 🎁";
 const BIRTHDAY_PUSH_BODY =
   "Alles Gute zum Geburtstag! Dein 5€ Gutschein wartet bei uns im Salon.";
 const TRIGGER_PASSWORD =
-  process.env.BIRTHDAY_TRIGGER_PASSWORD || "MiaLina&76429074";
+  process.env.BIRTHDAY_TRIGGER_PASSWORD || "";
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
 
 const chunk = (arr, size) =>
   arr.reduce((acc, _, i) => {
@@ -127,25 +128,127 @@ exports.birthdayCouponPush = onSchedule(
   }
 );
 
-exports.birthdayCouponPushTest = onRequest(async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).send("Method not allowed");
-  }
+exports.birthdayCouponPushTest = onRequest(
+  {
+    secrets: ["BIRTHDAY_TRIGGER_PASSWORD"],
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).send("Method not allowed");
+    }
 
-  const password = (req.body && req.body.password) || req.query.password;
-  if (password !== TRIGGER_PASSWORD) {
-    return res.status(403).send("Forbidden");
-  }
+    const password = (req.body && req.body.password) || req.query.password;
+    if (!TRIGGER_PASSWORD || password !== TRIGGER_PASSWORD) {
+      return res.status(403).send("Forbidden");
+    }
 
-  let targetDate = new Date();
-  if (req.body && req.body.date) {
-    const parsed = new Date(req.body.date);
-    if (!Number.isNaN(parsed.getTime())) {
-      targetDate = parsed;
+    let targetDate = new Date();
+    if (req.body && req.body.date) {
+      const parsed = new Date(req.body.date);
+      if (!Number.isNaN(parsed.getTime())) {
+        targetDate = parsed;
+      }
+    }
+
+    const dryRun = !!(req.body && req.body.dryRun);
+    const result = await sendBirthdayCoupons(targetDate, { dryRun });
+    return res.json(result);
+  }
+);
+
+exports.verifyAdminPassword = onCall(
+  {
+    secrets: ["ADMIN_SECRET"],
+  },
+  (request) => {
+    const password = request.data?.password || "";
+    if (!ADMIN_SECRET) {
+      throw new HttpsError("failed-precondition", "Admin secret not configured");
+    }
+    const ok = typeof password === "string" && password === ADMIN_SECRET;
+    if (!ok) {
+      throw new HttpsError("permission-denied", "Invalid password");
+    }
+    return { ok: true };
+  }
+);
+
+exports.verifyAdminPasswordHttp = onRequest(
+  {
+    secrets: ["ADMIN_SECRET"],
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).send("Method not allowed");
+    }
+    if (!ADMIN_SECRET) {
+      return res.status(500).send("Admin secret not configured");
+    }
+    const password = (req.body && req.body.password) || "";
+    if (password !== ADMIN_SECRET) {
+      return res.status(403).send("Forbidden");
+    }
+    return res.json({ ok: true });
+  }
+);
+
+exports.sendPushHttp = onRequest(
+  {
+    secrets: ["ADMIN_SECRET"],
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).send("Method not allowed");
+    }
+    if (!ADMIN_SECRET) {
+      return res.status(500).send("Admin secret not configured");
+    }
+
+    const { title, body, target = "all", userId, password } = req.body || {};
+    if (!password || password !== ADMIN_SECRET) {
+      return res.status(403).json({ error: "forbidden" });
+    }
+    if (!title || !body) {
+      return res.status(400).json({ error: "title and body are required" });
+    }
+
+    try {
+      let tokenDocs;
+      if (target === "selected" && userId) {
+        tokenDocs = await admin
+          .firestore()
+          .collection("users")
+          .doc(userId)
+          .collection("pushTokens")
+          .get();
+      } else {
+        tokenDocs = await admin.firestore().collectionGroup("pushTokens").get();
+      }
+
+      const tokens = tokenDocs.docs.map((d) => d.id).filter(Boolean);
+      if (tokens.length === 0) {
+        return res.json({ sent: 0, tokens: [] });
+      }
+
+      const messages = tokens.map((token) => ({
+        to: token,
+        title,
+        body,
+      }));
+
+      const response = await fetch(EXPO_PUSH_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messages),
+      });
+
+      const data = await response.json();
+      return res.json({ sent: tokens.length, expoResponse: data });
+    } catch (e) {
+      logger.error("sendPushHttp failed:", e);
+      return res.status(500).json({ error: "Push send failed" });
     }
   }
-
-  const dryRun = !!(req.body && req.body.dryRun);
-  const result = await sendBirthdayCoupons(targetDate, { dryRun });
-  return res.json(result);
-});
+);
