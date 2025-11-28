@@ -42,6 +42,9 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -49,9 +52,6 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import DateTimePicker, {
-  DateTimePickerAndroid,
-} from "@react-native-community/datetimepicker";
 
 import { auth, db } from "../../src/firebaseConfig";
 
@@ -118,6 +118,8 @@ type Customer = {
   email: string;
   points: number;
   dateOfBirth?: string;
+  birthDay?: number;
+  birthMonth?: number;
   phone?: string;
   street?: string;
   zip?: string;
@@ -369,6 +371,13 @@ useEffect(() => {
     return new Date(today.getFullYear() - 25, today.getMonth(), today.getDate());
   };
 
+  const getBirthDayMonth = (normalized: string | null) => {
+    if (!normalized) return { birthDay: null, birthMonth: null };
+    const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(normalized);
+    if (!match) return { birthDay: null, birthMonth: null };
+    return { birthDay: Number(match[1]), birthMonth: Number(match[2]) };
+  };
+
   const formatBirthDateFromDate = (d: Date) => {
     const day = String(d.getDate()).padStart(2, "0");
     const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -403,17 +412,18 @@ useEffect(() => {
             ? data.rewardClaims
             : {};
       } else {
-        await setDoc(userRef, {
-          email: fallbackEmail,
-          firstName: (defaults?.firstName || "").trim(),
-          lastName: (defaults?.lastName || "").trim(),
-          name: `${(defaults?.firstName || "").trim()} ${(defaults?.lastName || "").trim()}`.trim(),
-          dateOfBirth: (defaults?.dateOfBirth || "").trim(),
-          street: "",
-          zip: "",
-          city: "",
-          phone: "",
-          marketingConsent: false,
+      await setDoc(userRef, {
+        email: fallbackEmail,
+        firstName: (defaults?.firstName || "").trim(),
+        lastName: (defaults?.lastName || "").trim(),
+        name: `${(defaults?.firstName || "").trim()} ${(defaults?.lastName || "").trim()}`.trim(),
+        dateOfBirth: (defaults?.dateOfBirth || "").trim(),
+        ...getBirthDayMonth(normalizeBirthDate(defaults?.dateOfBirth || "")),
+        street: "",
+        zip: "",
+        city: "",
+        phone: "",
+        marketingConsent: false,
           points: 0, // KEIN Bonus hier
           registrationBonusGranted: false,
           rewardClaims: {},
@@ -783,6 +793,7 @@ useEffect(() => {
           lastName: lastName.trim(),
           name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           dateOfBirth: normalizedBirthDate,
+          ...getBirthDayMonth(normalizedBirthDate),
           street: street.trim(),
           zip: zip.trim(),
           city: city.trim(),
@@ -907,6 +918,8 @@ useEffect(() => {
           email: data.email || "",
           points: typeof data.points === "number" ? data.points : 0,
           dateOfBirth: data.dateOfBirth || "",
+          birthDay: typeof data.birthDay === "number" ? data.birthDay : undefined,
+          birthMonth: typeof data.birthMonth === "number" ? data.birthMonth : undefined,
           phone: data.phone || "",
           street: data.street || "",
           zip: data.zip || "",
@@ -1284,6 +1297,7 @@ const handleSaveCustomerPoints = async () => {
         name,
         email,
         dateOfBirth: normalizedBirthDate,
+        ...getBirthDayMonth(normalizedBirthDate || null),
         phone,
         street,
         zip,
