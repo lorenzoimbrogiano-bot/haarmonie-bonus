@@ -2194,7 +2194,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>
-              Hallo {firebaseUser.name || "Schönheit"} 🌸
+              Hallo {firebaseUser.name || "Schönheit"}
             </Text>
             <Text style={styles.subGreeting}>
               Eingeloggt als {firebaseUser.email}
@@ -3111,7 +3111,7 @@ const styles = StyleSheet.create({
   mainScroll: {
     padding: 20,
     paddingTop: 20,
-    paddingBottom: 40,
+    paddingBottom: 0,
   },
   logoImage: {
     width: 300,
