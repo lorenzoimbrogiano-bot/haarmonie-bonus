@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  ActivityIndicator,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import BirthdayVoucherCard from "./BirthdayVoucherCard";
 
 type Props = {
@@ -96,7 +91,7 @@ export default function CustomerHome({
               : "Offen";
 
             return (
-              <View key={action.id} style={styles.actionCard}>
+              <View key={action.id} style={[localStyles.actionCard, localStyles.actionCardElevated]}>
                 <TouchableOpacity
                   activeOpacity={0.9}
                   onPress={() =>
@@ -110,57 +105,88 @@ export default function CustomerHome({
                     },
                   ]}
                 >
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.actionTitle}>{action.title}</Text>
-                    <Text style={styles.actionDescription}>
-                      {action.description}
+                    <Text style={styles.actionDescription}>{action.description}</Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <View
+                      style={[
+                        styles.statusChip,
+                        claimed
+                          ? styles.statusChipDone
+                          : pending
+                          ? styles.statusChipPending
+                          : styles.statusChipOpen,
+                      ]}
+                    >
+                      <Text style={styles.statusChipText}>{statusLabel}</Text>
+                    </View>
+                    <Text style={styles.dropdownChevron}>
+                      {isExpanded ? "▾" : "▸"}
                     </Text>
                   </View>
-                  <Text style={styles.dropdownChevron}>
-                    {isExpanded ? "▾" : "▸"}
-                  </Text>
                 </TouchableOpacity>
 
-                <View
-                  style={[
-                    styles.statusChip,
-                    claimed
-                      ? styles.statusChipDone
-                      : pending
-                      ? styles.statusChipPending
-                      : styles.statusChipOpen,
-                  ]}
-                >
-                  <Text style={styles.statusChipText}>{statusLabel}</Text>
+                <View style={{ marginTop: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <Text
+                    style={[
+                      styles.actionPoints,
+                      { fontSize: 18, color: "#b26a00", fontWeight: "800" },
+                    ]}
+                  >
+                    +{action.points} Punkte
+                  </Text>
                 </View>
 
-                <Text style={styles.actionPoints}>+{action.points} Punkte</Text>
-
                 {isExpanded && (
-                  <Text style={styles.actionDescription}>
-                    Jetzt erledigen und im Salon freischalten lassen.
-                  </Text>
+                  <>
+                    <Text
+                      style={[
+                        styles.actionDescription,
+                        {
+                          marginTop: 4,
+                          fontSize: 13,
+                          fontWeight: "600",
+                          color: "#a06f34",
+                        },
+                      ]}
+                    >
+                      Jetzt erledigen und im Salon freischalten lassen.
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                      {action.url ? (
+                        <TouchableOpacity
+                          style={[styles.secondaryButton, { flex: 1 }]}
+                          onPress={() => onClaimRewardAction(action)}
+                        >
+                          <Text style={styles.secondaryButtonText}>Link öffnen</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                      <TouchableOpacity
+                        style={[
+                          styles.primaryButton,
+                          styles.actionButton,
+                          { flex: 1 },
+                          (claimed || busy || pending) && styles.actionButtonDisabled,
+                          { backgroundColor: "#c49a6c", paddingVertical: 12 },
+                        ]}
+                        disabled={claimed || busy || pending}
+                        onPress={() => onClaimRewardAction(action)}
+                      >
+                        <Text style={styles.primaryButtonText}>
+                          {claimed
+                            ? "Bereits eingelöst"
+                            : pending
+                            ? "In Prüfung"
+                            : busy
+                            ? "Bitte warten"
+                            : "Punkte anfragen"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
                 )}
-
-                <TouchableOpacity
-                  style={[
-                    styles.primaryButton,
-                    styles.actionButton,
-                    (claimed || pending || busy) && styles.actionButtonDisabled,
-                  ]}
-                  disabled={claimed || pending || busy}
-                  onPress={() => onClaimRewardAction(action)}
-                >
-                  <Text style={styles.primaryButtonText}>
-                    {claimed
-                      ? "Eingelöst"
-                      : pending
-                      ? "In Prüfung"
-                      : busy
-                      ? "Bitte warten..."
-                      : "Punkte anfragen"}
-                  </Text>
-                </TouchableOpacity>
               </View>
             );
           })
@@ -241,3 +267,28 @@ export default function CustomerHome({
     </>
   );
 }
+
+const localStyles = StyleSheet.create({
+  actionCard: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    padding: 14,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    gap: 10,
+  },
+  actionCardElevated: {
+    backgroundColor: "#fff7ec",
+    borderColor: "#eaded1",
+    borderWidth: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+  },
+});
