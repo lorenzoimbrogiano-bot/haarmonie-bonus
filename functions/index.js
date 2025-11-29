@@ -4,7 +4,18 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
 if (!admin.apps.length) {
-  admin.initializeApp();
+  const serviceAccountJson = process.env.SERVICE_ACCOUNT_JSON;
+  if (serviceAccountJson) {
+    try {
+      const credential = admin.credential.cert(JSON.parse(serviceAccountJson));
+      admin.initializeApp({ credential });
+    } catch (err) {
+      logger.error("SERVICE_ACCOUNT_JSON konnte nicht geparst werden, fallback auf Default-Creds", err);
+      admin.initializeApp();
+    }
+  } else {
+    admin.initializeApp(); // nutzt Runtime/Default Credentials (empfohlen bei Deploy)
+  }
 }
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
