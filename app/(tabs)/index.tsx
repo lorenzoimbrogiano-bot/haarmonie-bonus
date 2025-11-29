@@ -59,6 +59,8 @@ import {
 } from "firebase/auth";
 
 import { auth, db, functions as fbFunctions } from "../../src/firebaseConfig";
+import BirthdayVoucherCard from "../../components/BirthdayVoucherCard";
+import CustomerHome from "../../components/CustomerHome";
 
 const VERIFY_ADMIN_PASSWORD_URL =
   "https://us-central1-haarmonie-bonus.cloudfunctions.net/verifyAdminPasswordHttp";
@@ -1243,125 +1245,6 @@ const registerForPushNotificationsAsync = async (uid: string) => {
   );
 };
 
-const BirthdayVoucherCard = ({
-  visible,
-  year,
-  onBookPress,
-}: {
-  visible: boolean;
-  year: number | null;
-  onBookPress?: () => void;
-}) => {
-  const scaleAnim = useRef(new Animated.Value(0.98)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const [confettiKey, setConfettiKey] = useState(0);
-  const shotOnce = useRef(false);
-  const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
-  const width = Dimensions.get("window").width;
-
-  useEffect(() => {
-    if (!visible) return;
-
-    // Burst + intro zoom
-    if (!shotOnce.current) {
-      shotOnce.current = true;
-      setConfettiKey((k) => k + 1);
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 6,
-        tension: 120,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      scaleAnim.setValue(0.98);
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 6,
-        tension: 120,
-        useNativeDriver: true,
-      }).start();
-    }
-
-    // Pulse glow loop
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 1600,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: false,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0,
-          duration: 1800,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: false,
-        }),
-        Animated.delay(800),
-      ])
-    );
-    loop.start();
-    pulseLoop.current = loop;
-    return () => {
-      loop.stop();
-    };
-  }, [visible, glowAnim, scaleAnim]);
-
-  if (!visible) return null;
-
-  const glowOpacity = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.9],
-  });
-
-  return (
-    <View style={styles.birthdayWrapper}>
-      <Animated.View
-        style={[
-          styles.birthdayGlow,
-          {
-            opacity: glowOpacity,
-          },
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.birthdayCardShell,
-          {
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-      >
-        <View style={styles.birthdayBadge}>
-          <Text style={styles.birthdayBadgeText}>Aktiv</Text>
-        </View>
-        <Text style={styles.birthdayTitle}>Geburtstags-Gutschein</Text>
-        <Text style={styles.birthdayAmount}>5 €</Text>
-        <Text style={styles.birthdaySubtitle}>
-          Dein Geburtstags-Gutschein ist aktiv.
-          {year ? `\nGültig für 12 Monate` : ""}
-        </Text>
-        <TouchableOpacity
-          onPress={onBookPress}
-          style={[styles.primaryButton, { marginTop: 10 }]}
-          activeOpacity={0.9}
-        >
-          <Text style={styles.primaryButtonText}>Jetzt Termin sichern</Text>
-        </TouchableOpacity>
-        <ConfettiCannon
-          key={confettiKey}
-          count={70}
-          origin={{ x: width / 2, y: -10 }}
-          autoStart
-          fadeOut
-          explosionSpeed={450}
-          fallSpeed={2200}
-        />
-      </Animated.View>
-    </View>
-  );
-};
-
   const handleOpenPushNavigation = () => {
     setPushPasswordError("");
     setPushPasswordInput("");
@@ -2538,218 +2421,33 @@ const renderRedemptionRow = (r: RewardRedemption) => {
         {/* Kundensicht: eigener Punktestand + Historie (nur lesen) */}
                 {/* Kundensicht: eigener Punktestand + Historie (nur lesen) */}
         {!isAdminView && (
-          <>
-            <View style={styles.pointsCardWrapper}>
-              <View style={styles.pointsCardGlow} />
-              <View style={[styles.pointsCard, styles.pointsCardGradient]}>
-                <Text style={styles.pointsLabel}>Dein Punktestand</Text>
-                <Text style={styles.pointsValue}>{points}</Text>
-                <Text style={styles.pointsHint}>
-                  Du sammelst bei jedem Besuch Punkte, die du gegen Verwöhnmomente
-                  einlösen kannst.
-                </Text>
-
-                <TouchableOpacity
-                  style={[styles.primaryButton, { marginTop: 12 }]}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/rewards",
-                      params: { points: String(points) },
-                    })
-                  }
-                >
-                  <Text style={styles.primaryButtonText}>Prämien ansehen</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <BirthdayVoucherCard
-              visible={birthdayVoucherAvailable}
-              year={birthdayVoucherYear}
-              onBookPress={() => {
-                Linking.openURL("tel:+4979197825477").catch(() => {});
-              }}
-            />
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Prämien-Aktionen</Text>
-              {rewardActionsLoading && visibleRewardActions.length === 0 ? (
-                <ActivityIndicator style={{ marginTop: 8 }} />
-              ) : visibleRewardActions.length === 0 ? (
-                <Text style={styles.emptyText}>Keine Aktionen verfügbar.</Text>
-              ) : (
-                visibleRewardActions.map((action) => {
-                const status = rewardClaims[action.id];
-                const claimed = status === true;
-                const pending = status === "pending";
-                const busy = rewardClaimBusy === action.id;
-                const isExpanded = rewardExpandedId === action.id;
-
-                const statusLabel = claimed
-                  ? "Eingelöst"
-                  : pending
-                  ? "In Prüfung"
-                  : "Offen";
-
-                return (
-                  <View key={action.id} style={styles.actionCard}>
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                      onPress={() =>
-                        setRewardExpandedId((prev) =>
-                          prev === action.id ? null : action.id
-                        )
-                      }
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.actionTitle}>{action.title}</Text>
-                        <Text style={styles.actionPoints}>+{action.points} Punkte</Text>
-                      </View>
-                      <View style={{ alignItems: "flex-end" }}>
-                        <View
-                          style={[
-                            styles.statusChip,
-                            claimed
-                              ? styles.statusChipDone
-                              : pending
-                              ? styles.statusChipPending
-                              : styles.statusChipOpen,
-                          ]}
-                        >
-                          <Text style={styles.statusChipText}>{statusLabel}</Text>
-                        </View>
-                        <Text style={styles.dropdownChevron}>
-                          {isExpanded ? "\u25BE" : "\u25B8"}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {isExpanded && (
-                      <>
-                        <Text style={[styles.actionDescription, { marginTop: 6 }]}>
-                          {action.description}
-                        </Text>
-                        {pending && (
-                          <Text style={styles.actionPending}>
-                            In Prüfung - Bitte mit einem Salonmitarbeiter freischalten lassen.
-                          </Text>
-                        )}
-                        <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-                          {action.url ? (
-                            <TouchableOpacity
-                              style={[styles.secondaryButton, { flex: 1 }]}
-                              onPress={() => openRewardLink(action)}
-                            >
-                              <Text style={styles.secondaryButtonText}>Link öffnen</Text>
-                            </TouchableOpacity>
-                          ) : null}
-                          <TouchableOpacity
-                            style={[
-                              styles.primaryButton,
-                              styles.actionButton,
-                              { flex: 1 },
-                              (claimed || busy || pending) && styles.actionButtonDisabled,
-                            ]}
-                            disabled={claimed || busy || pending}
-                            onPress={() => handleClaimRewardAction(action)}
-                          >
-                            <Text style={styles.primaryButtonText}>
-                              {claimed
-                                ? "Bereits eingelöst"
-                                : pending
-                                ? "In Prüfung"
-                                : busy
-                                ? "Bitte warten"
-                                : "Punkte anfragen"}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </>
-                    )}
-                  </View>
-                );
-              }))}
-            </View>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Deine Besuche</Text>
-
-              {visitHistory.length === 0 ? (
-                <Text style={styles.emptyText}>
-                  Noch keine Buchungen vorhanden.
-                </Text>
-              ) : (
-                <>
-                  {(showAllVisits ? visitHistory : visitHistory.slice(0, 3)).map((v) => {
-                    const reason =
-                      v.reason ||
-                      (typeof v.amount === "number"
-                        ? "Salonmitarbeiter"
-                        : undefined);
-                    const employee = v.employeeName;
-
-                    return (
-                      <View key={v.id} style={styles.visitItem}>
-                        <Text style={styles.visitDate}>{v.date}</Text>
-                        <Text style={styles.visitPoints}>
-                          {v.points > 0
-                            ? `+${v.points}`
-                            : v.points < 0
-                            ? `${v.points}`
-                            : "0"}{" "}
-                          Punkte
-                          {typeof v.amount === "number"
-                            ? ` (aus ${v.amount.toFixed(2)} €)`
-                            : ""}
-                        </Text>
-                        {reason && (
-                          <Text style={styles.visitReason}>
-                            Grund: {reason}
-                            {employee ? ` · Mitarbeiter: ${employee}` : ""}
-                          </Text>
-                        )}
-                      </View>
-                    );
-                  })}
-
-                  {visitHistory.length > 3 && (
-                    <TouchableOpacity
-                      style={[styles.secondaryButton, { marginTop: 12 }]}
-                      onPress={() => setShowAllVisits((prev) => !prev)}
-                    >
-                      <Text style={styles.secondaryButtonText}>
-                        {showAllVisits ? "Weniger anzeigen" : "Alle anzeigen"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-            </View>
-
-            <View style={styles.section}>
-              <View style={styles.feedbackCardWrapper}>
-                <View style={styles.feedbackCardGlow} />
-                <TouchableOpacity
-                  style={[styles.feedbackCard, styles.feedbackCardGradient]}
-                  onPress={() => setShowFeedbackModal(true)}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.sectionTitle}>Feedback zur App</Text>
-                  <Text style={styles.modalText}>
-                    Wir freuen uns über deine Rückmeldung. Tippe hier, um Feedback zu schreiben.
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              {feedbackSent && (
-                <Text style={[styles.modalText, { color: "#256029", marginTop: 6 }]}>
-                  Vielen Dank! Feedback wurde erfasst.
-                </Text>
-              )}
-            </View>
-          </>
+          <CustomerHome
+            styles={styles}
+            points={points}
+            onOpenRewards={() =>
+              router.push({
+                pathname: "/rewards",
+                params: { points: String(points) },
+              })
+            }
+            birthdayVoucherAvailable={birthdayVoucherAvailable}
+            birthdayVoucherYear={birthdayVoucherYear}
+            onBirthdayBook={() => {
+              Linking.openURL("tel:+4979197825477").catch(() => {});
+            }}
+            rewardActionsLoading={rewardActionsLoading}
+            visibleRewardActions={visibleRewardActions}
+            rewardClaims={rewardClaims}
+            rewardClaimBusy={rewardClaimBusy}
+            rewardExpandedId={rewardExpandedId}
+            setRewardExpandedId={setRewardExpandedId}
+            onClaimRewardAction={handleClaimRewardAction}
+            visitHistory={visitHistory}
+            showAllVisits={showAllVisits}
+            setShowAllVisits={setShowAllVisits}
+            onOpenFeedback={() => setShowFeedbackModal(true)}
+            feedbackSent={feedbackSent}
+          />
         )}
 
         {/* Admin-/Mitarbeiterbereich: Kunden verwalten */}
