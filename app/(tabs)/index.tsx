@@ -3336,9 +3336,8 @@ const styles = StyleSheet.create({
   customerRow: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#eaded1",
   },
   customerRowActive: {
     backgroundColor: "#f3e5d0",
@@ -3357,7 +3356,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#c49a6c",
-    marginLeft: 8,
+    marginLeft: 4,
   },
   actionCard: {
     flexDirection: "column",
