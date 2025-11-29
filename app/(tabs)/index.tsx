@@ -2630,7 +2630,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                           <Text style={styles.statusChipText}>{statusLabel}</Text>
                         </View>
                         <Text style={styles.dropdownChevron}>
-                          {isExpanded ? "▼" : "▶"}
+                          {isExpanded ? "\u25BE" : "\u25B8"}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -2901,7 +2901,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                             {selectedAdminEmployee || "Mitarbeiter auswählen"}
                           </Text>
                           <Text style={styles.dropdownChevron}>
-                            {employeeDropdownOpen ? "?" : "?"}
+                            {employeeDropdownOpen ? "\u25BE" : "\u25B8"}
                           </Text>
                         </TouchableOpacity>
                         {employeeDropdownOpen && (
@@ -2939,11 +2939,12 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                           Punkte verbuchen (Euro = Punkte)
                         </Text>
                         <Text style={{ fontSize: 13, marginBottom: 8 }}>
-                          {selectedCustomer.name} ({selectedCustomer.email})
+                          Kunde: {selectedCustomer.name}
                         </Text>
 
-                        <Text style={styles.loginLabel}>Mitarbeiter/in</Text>
-                        <Text style={[styles.dropdownTriggerText, { marginBottom: 6 }]}>{selectedAdminEmployee || "Bitte oben auswählen"}</Text>
+                        <Text style={{ fontSize: 13, marginBottom: 6 }}>
+                          Mitarbeiter/in: {selectedAdminEmployee || "Bitte oben auswählen"}
+                        </Text>
 
                         <Text style={styles.loginLabel}>Betrag in Euro</Text>
                         <TextInput
@@ -4002,7 +4003,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   dropdownChevron: {
-    fontSize: 14,
+    fontSize: 24,
     color: "#777",
   },
   dropdownList: {
