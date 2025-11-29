@@ -1574,6 +1574,14 @@ const handleSaveCustomerPoints = async () => {
 
   const handleRedeemBirthdayVoucher = async () => {
     if (!selectedCustomer) return;
+    const employee = rewardEmployeeName.trim() || editEmployeeName.trim();
+    if (!employee) {
+      Alert.alert(
+        "Mitarbeiter auswählen",
+        "Bitte Mitarbeiter/in auswählen, bevor der Gutschein eingelöst wird."
+      );
+      return;
+    }
     if (!selectedCustomer.birthdayVoucherAvailable && !birthdayVoucherAvailable) {
       Alert.alert("Nicht verfügbar", "Kein Geburtstags-Gutschein aktiv.");
       return;
@@ -1595,7 +1603,7 @@ const handleSaveCustomerPoints = async () => {
       points: 0,
       reason: "Geburtstags-Gutschein eingelöst",
       source: "birthday-voucher",
-      employeeName: rewardEmployeeName || editEmployeeName || "",
+      employeeName: employee,
     });
 
       setSelectedCustomer((prev: any) =>
@@ -1804,7 +1812,8 @@ const handleSaveCustomerPoints = async () => {
   const handleAdminApproveRewardAction = async (action: RewardAction) => {
     if (!firebaseUser?.isAdmin || !selectedCustomer) return;
 
-    if (!rewardEmployeeName.trim()) {
+    const employee = rewardEmployeeName.trim() || editEmployeeName.trim();
+    if (!employee) {
       Alert.alert(
         "Mitarbeiter auswählen",
         "Bitte Mitarbeiter auswählen, der die Punkte freigibt."
@@ -1845,7 +1854,7 @@ const handleSaveCustomerPoints = async () => {
         points: action.points,
         reason: `Prämienaktion bestätigt: ${action.title}`,
         source: "reward-action-admin",
-        employeeName: rewardEmployeeName.trim(),
+        employeeName: employee,
       });
 
       setCustomers((prev) =>
@@ -2394,6 +2403,8 @@ const handleSaveCustomerPoints = async () => {
   const hasPendingRewardClaims = sortedRewardActions.some(
     (action) => selectedCustomerRewardClaims[action.id] === "pending"
   );
+  const hasActionEmployee =
+    rewardEmployeeName.trim().length > 0 || editEmployeeName.trim().length > 0;
 
   const pendingRedemptions = selectedCustomerRedemptions.filter(
     (r) => r.status !== "approved"
@@ -3141,9 +3152,11 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                                 const claimed = status === true;
                                 const pending = status === "pending";
                                 const busy = adminRewardBusy === action.id;
-                                const disabled = claimed || busy || !pending;
+                                const disabled = claimed || busy || !pending || !hasActionEmployee;
                                 const approveLabel = claimed
                                   ? "Schon gutgeschrieben"
+                                  : !hasActionEmployee
+                                  ? "Mitarbeiter auswählen"
                                   : busy
                                   ? "Bitte warten..."
                                   : pending
@@ -3184,18 +3197,24 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                           style={[
                             styles.adminActionButton,
                             styles.actionButton,
-                            (!selectedCustomer?.birthdayVoucherAvailable || adminBirthdayBusy) &&
+                            (!selectedCustomer?.birthdayVoucherAvailable ||
+                              adminBirthdayBusy ||
+                              !hasActionEmployee) &&
                               styles.actionButtonDisabled,
                             { marginTop: 6 },
                           ]}
                           disabled={
-                            !selectedCustomer?.birthdayVoucherAvailable || adminBirthdayBusy
+                            !selectedCustomer?.birthdayVoucherAvailable ||
+                            adminBirthdayBusy ||
+                            !hasActionEmployee
                           }
                           onPress={handleRedeemBirthdayVoucher}
                         >
                           <Text style={styles.primaryButtonText}>
                             {selectedCustomer?.birthdayVoucherAvailable
-                              ? adminBirthdayBusy
+                              ? !hasActionEmployee
+                                ? "Mitarbeiter auswählen"
+                                : adminBirthdayBusy
                                 ? "Bitte warten..."
                                 : "Gutschein einlösen"
                               : "Kein Gutschein verfügbar"}
