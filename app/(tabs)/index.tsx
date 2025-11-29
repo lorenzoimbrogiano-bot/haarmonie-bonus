@@ -198,7 +198,6 @@ export default function BonusApp() {
   const [rewardExpandedId, setRewardExpandedId] = useState<string | null>(null);
   const [birthdayVoucherAvailable, setBirthdayVoucherAvailable] = useState(false);
   const [birthdayVoucherYear, setBirthdayVoucherYear] = useState<number | null>(null);
-  const [birthdayVoucherRedeemedYear, setBirthdayVoucherRedeemedYear] = useState<number | null>(null);
   const [rewardActions, setRewardActions] = useState<RewardAction[]>([]);
   const [rewardActionsLoading, setRewardActionsLoading] = useState(false);
   const [rewardActionsExpanded, setRewardActionsExpanded] = useState(false);
@@ -440,7 +439,6 @@ useEffect(() => {
       let claimsFromDb: Record<string, string | boolean> = {};
       let voucherAvailable = false;
       let voucherYear: number | null = null;
-      let voucherRedeemedYear: number | null = null;
 
       if (snap.exists()) {
         const data = snap.data() as any;
@@ -455,7 +453,6 @@ useEffect(() => {
         const voucher = computeBirthdayVoucherState(data);
         voucherAvailable = voucher.available;
         voucherYear = voucher.year;
-        voucherRedeemedYear = voucher.redeemedYear;
       } else {
       await setDoc(userRef, {
         email: fallbackEmail,
@@ -490,7 +487,6 @@ useEffect(() => {
       setRewardClaims(claimsFromDb);
       setBirthdayVoucherAvailable(voucherAvailable);
       setBirthdayVoucherYear(voucherYear);
-      setBirthdayVoucherRedeemedYear(voucherRedeemedYear);
 
       try {
         const visitsRef = collection(userRef, "visits");
@@ -567,13 +563,8 @@ useEffect(() => {
             : {};
         const nameFromDb = data.name || firebaseUser.name || "";
         const emailFromDb = data.email || firebaseUser.email || "";
-        const voucher = computeBirthdayVoucherState(data);
-
         setPoints(pointsFromDb);
         setRewardClaims(claimsFromDb);
-        setBirthdayVoucherAvailable(voucher.available);
-        setBirthdayVoucherYear(voucher.year);
-        setBirthdayVoucherRedeemedYear(voucher.redeemedYear);
         setFirebaseUser((prev) =>
           prev
             ? {
@@ -1115,7 +1106,7 @@ useEffect(() => {
       setExportBusy(false);
       setExportPasswordInput("");
     }
-  }, [exportBusy, exportPasswordInput, firebaseUser?.isAdmin]);
+  }, [exportBusy, exportPasswordInput, firebaseUser?.isAdmin, verifyAdminPassword]);
 
   const handleSelectCustomer = (c: Customer) => {
     // Toggle: bei erneutem Klick den Kunden wieder abwählen und Felder schließen
@@ -1761,16 +1752,6 @@ const handleSaveCustomerPoints = async () => {
     } finally {
       setRewardClaimBusy(null);
     }
-  };
-
-  const openRewardLink = (action: RewardAction) => {
-    if (!action.url) return;
-    Linking.openURL(action.url).catch(() => {
-      Alert.alert(
-        "Link öffnen",
-        "Bitte öffne den Link manuell und zeige uns danach den Nachweis im Salon."
-      );
-    });
   };
 
   const applyBirthDateSelection = (
