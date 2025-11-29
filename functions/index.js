@@ -192,6 +192,42 @@ exports.verifyAdminPasswordHttp = onRequest(
   }
 );
 
+// Customers can mark a reward action as "pending" server-side
+// so the rewardClaims field is never written directly from the client.
+exports.requestRewardAction = onCall(async (request) => {
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError("unauthenticated", "Bitte einloggen.");
+  }
+
+  const actionId = (request.data?.actionId || "").trim();
+  if (!actionId || actionId.length > 80) {
+    throw new HttpsError("invalid-argument", "Ungueltige actionId");
+  }
+
+  const uid = request.auth.uid;
+  const userRef = admin.firestore().collection("users").doc(uid);
+  const snap = await userRef.get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "User nicht gefunden");
+  }
+
+  const claims = snap.get("rewardClaims") || {};
+  const current = claims[actionId];
+
+  if (current === true) {
+    return { status: "already-approved" };
+  }
+  if (current === "pending") {
+    return { status: "already-pending" };
+  }
+
+  await userRef.update({
+    [`rewardClaims.${actionId}`]: "pending",
+  });
+
+  return { status: "pending-set" };
+});
+
 exports.sendPushHttp = onRequest(
   {
     secrets: ["ADMIN_SECRET"],

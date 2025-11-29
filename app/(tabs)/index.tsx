@@ -2002,10 +2002,17 @@ const handleSaveCustomerPoints = async () => {
 
     setRewardClaimBusy(action.id);
     try {
-      const userRef = doc(db, "users", firebaseUser.uid);
-      await updateDoc(userRef, {
-        [`rewardClaims.${action.id}`]: "pending",
-      });
+      const markPending = httpsCallable(fbFunctions, "requestRewardAction");
+      const result = await markPending({ actionId: action.id });
+      const status = (result as any)?.data?.status;
+
+      if (status === "already-approved") {
+        setRewardClaims((prev) => ({ ...prev, [action.id]: true }));
+        Alert.alert("Schon bestätigt", "Diese Aktion wurde bereits gutgeschrieben.");
+        setRewardClaimBusy(null);
+        return;
+      }
+
       setRewardClaims((prev) => ({ ...prev, [action.id]: "pending" }));
 
       if (action.url) {

@@ -6,8 +6,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Admin-Check: feste E-Mail-Liste oder custom-claim admin=true
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == "info@haarmonie-sha.de";
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        (request.auth.token.email is string &&
+          ["info@haarmonie-sha.de"].hasAny([request.auth.token.email.lower()]))
+      );
     }
 
     function isOwner(uid) {
@@ -23,7 +28,8 @@ service cloud.firestore {
         request.resource.data.birthdayVoucherRedeemedYear == resource.data.birthdayVoucherRedeemedYear &&
         request.resource.data.lastBirthdayGiftYear == resource.data.lastBirthdayGiftYear &&
         request.resource.data.birthDay == resource.data.birthDay &&
-        request.resource.data.birthMonth == resource.data.birthMonth;
+        request.resource.data.birthMonth == resource.data.birthMonth &&
+        request.resource.data.rewardClaims == resource.data.rewardClaims;
     }
 
     // Haupt-Dokument pro Kund:in
