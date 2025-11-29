@@ -192,39 +192,45 @@ export default function RewardsScreen() {
           Hier siehst du alle Bonus-Prämien und die benötigten Punkte.
         </Text>
 
-        <View style={styles.pointsBanner}>
-          <Text style={styles.pointsBannerLabel}>Dein Punktestand</Text>
-          <Text style={styles.pointsBannerValue}>
-            {hasPoints ? `${parsedPoints} P` : "noch nicht geladen"}
-          </Text>
-        </View>
-
-        <View style={styles.progressCard}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Fortschritt</Text>
-            <Text style={styles.progressValue}>
-              {hasPoints && nextReward
-                ? `${currentPoints} / ${nextReward.pointsRequired} P`
-                : hasPoints
-                ? "Alles erreicht"
-                : "Punkte laden..."}
+        <View style={styles.pointsBannerWrapper}>
+          <View style={styles.pointsBannerGlow} />
+          <View style={[styles.pointsBanner, styles.pointsBannerGradient]}>
+            <Text style={styles.pointsBannerLabel}>Dein Punktestand</Text>
+            <Text style={styles.pointsBannerValue}>
+              {hasPoints ? `${parsedPoints} P` : "noch nicht geladen"}
             </Text>
           </View>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${Math.round(progressRatio * 100)}%` },
-              ]}
-            />
+        </View>
+
+        <View style={styles.progressCardWrapper}>
+          <View style={styles.progressCardGlow} />
+          <View style={[styles.progressCard, styles.progressCardGradient]}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressTitle}>Fortschritt</Text>
+              <Text style={styles.progressValue}>
+                {hasPoints && nextReward
+                  ? `${currentPoints} / ${nextReward.pointsRequired} P`
+                  : hasPoints
+                  ? "Alles erreicht"
+                  : "Punkte laden..."}
+              </Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${Math.round(progressRatio * 100)}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressHint}>
+              {nextReward && hasPoints
+                ? `Noch ${missingToNext} P bis "${nextReward.title}"`
+                : nextReward
+                ? `Nächste Prämie: ${nextReward.title}`
+                : "Du hast bereits alle Prämien freigeschaltet."}
+            </Text>
           </View>
-          <Text style={styles.progressHint}>
-            {nextReward && hasPoints
-              ? `Noch ${missingToNext} P bis "${nextReward.title}"`
-              : nextReward
-              ? `Nächste Prämie: ${nextReward.title}`
-              : "Du hast bereits alle Prämien freigeschaltet."}
-          </Text>
         </View>
 
         {feedback && (
@@ -392,13 +398,39 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
+  pointsBannerWrapper: {
+    position: "relative",
+    marginBottom: 16,
+  },
+  pointsBannerGlow: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    top: 6,
+    bottom: 6,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 204, 128, 0.35)",
+    shadowColor: "#f4b860",
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+  },
   pointsBanner: {
     backgroundColor: "#fdf4ea",
     borderRadius: 16,
     padding: 14,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#eaded1",
+  },
+  pointsBannerGradient: {
+    backgroundColor: "#fff7ec",
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    borderWidth: 0,
   },
   pointsBannerLabel: {
     fontSize: 12,
@@ -410,18 +442,46 @@ const styles = StyleSheet.create({
     color: "#c49a6c",
     marginTop: 4,
   },
+  progressCardWrapper: {
+    position: "relative",
+    marginBottom: 18,
+  },
+  progressCardGlow: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    top: 6,
+    bottom: 6,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 204, 128, 0.35)",
+    shadowColor: "#f4b860",
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+  },
   progressCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
     borderColor: "#eaded1",
-    marginBottom: 16,
+    marginBottom: 0,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
     elevation: 2,
+  },
+  progressCardGradient: {
+    backgroundColor: "#fff7ec",
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    borderWidth: 0,
+    borderColor: "transparent",
   },
   progressHeader: {
     flexDirection: "row",

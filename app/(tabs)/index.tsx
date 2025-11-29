@@ -2527,25 +2527,28 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                 {/* Kundensicht: eigener Punktestand + Historie (nur lesen) */}
         {!isAdminView && (
           <>
-            <View style={styles.pointsCard}>
-              <Text style={styles.pointsLabel}>Dein Punktestand</Text>
-              <Text style={styles.pointsValue}>{points}</Text>
-              <Text style={styles.pointsHint}>
-                Du sammelst bei jedem Besuch Punkte, die du gegen Verwöhnmomente
-                einlösen kannst.
-              </Text>
+            <View style={styles.pointsCardWrapper}>
+              <View style={styles.pointsCardGlow} />
+              <View style={[styles.pointsCard, styles.pointsCardGradient]}>
+                <Text style={styles.pointsLabel}>Dein Punktestand</Text>
+                <Text style={styles.pointsValue}>{points}</Text>
+                <Text style={styles.pointsHint}>
+                  Du sammelst bei jedem Besuch Punkte, die du gegen Verwöhnmomente
+                  einlösen kannst.
+                </Text>
 
-              <TouchableOpacity
-                style={[styles.primaryButton, { marginTop: 12 }]}
-                onPress={() =>
-                  router.push({
-                    pathname: "/rewards",
-                    params: { points: String(points) },
-                  })
-                }
-              >
-                <Text style={styles.primaryButtonText}>Prämien ansehen</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.primaryButton, { marginTop: 12 }]}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/rewards",
+                      params: { points: String(points) },
+                    })
+                  }
+                >
+                  <Text style={styles.primaryButtonText}>Prämien ansehen</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <BirthdayVoucherCard
@@ -2715,15 +2718,19 @@ const renderRedemptionRow = (r: RewardRedemption) => {
             </View>
 
             <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.feedbackCard}
-                onPress={() => setShowFeedbackModal(true)}
-              >
-                <Text style={styles.sectionTitle}>Feedback zur App</Text>
-                <Text style={styles.modalText}>
-                  Wir freuen uns über deine Rückmeldung. Tippe hier, um Feedback zu schreiben.
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.feedbackCardWrapper}>
+                <View style={styles.feedbackCardGlow} />
+                <TouchableOpacity
+                  style={[styles.feedbackCard, styles.feedbackCardGradient]}
+                  onPress={() => setShowFeedbackModal(true)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.sectionTitle}>Feedback zur App</Text>
+                  <Text style={styles.modalText}>
+                    Wir freuen uns über deine Rückmeldung. Tippe hier, um Feedback zu schreiben.
+                  </Text>
+                </TouchableOpacity>
+              </View>
               {feedbackSent && (
                 <Text style={[styles.modalText, { color: "#256029", marginTop: 6 }]}>
                   Vielen Dank! Feedback wurde erfasst.
@@ -3713,6 +3720,23 @@ const styles = StyleSheet.create({
     color: "#555",
     fontWeight: "500",
   },
+  pointsCardWrapper: {
+    position: "relative",
+    marginBottom: 20,
+  },
+  pointsCardGlow: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    top: 6,
+    bottom: 6,
+    borderRadius: 26,
+    backgroundColor: "rgba(255, 204, 128, 0.35)",
+    shadowColor: "#f4b860",
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+  },
   pointsCard: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -3723,6 +3747,16 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
+  },
+  pointsCardGradient: {
+    backgroundColor: "#fff7ec",
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    marginBottom: 0,
   },
   pointsLabel: {
     fontSize: 14,
@@ -4054,6 +4088,22 @@ const styles = StyleSheet.create({
     color: "#555",
     fontWeight: "600",
   },
+  feedbackCardWrapper: {
+    position: "relative",
+  },
+  feedbackCardGlow: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    top: 6,
+    bottom: 6,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 204, 128, 0.35)",
+    shadowColor: "#f4b860",
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+  },
   feedbackCard: {
     backgroundColor: "#fff",
     borderRadius: 14,
@@ -4065,6 +4115,17 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+  },
+  feedbackCardGradient: {
+    backgroundColor: "#fff7ec",
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    borderWidth: 0,
+    borderColor: "transparent",
   },
   redemptionHeader: {
     backgroundColor: "#e9f7ef",
