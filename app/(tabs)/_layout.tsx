@@ -64,7 +64,7 @@ export default function TabLayout() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
-                    borderColor: '#eaded1',
+                    borderColor: '#ead1d1ff',
                   }}
                   accessibilityLabel="Salon anrufen"
                 >
