@@ -1150,16 +1150,14 @@ useEffect(() => {
       setCustomerEditExpanded(false);
       setCustomerEditUnlocked(false);
       setCustomerPasswordInput("");
-    setCustomerPasswordError("");
-    setEditCustomerName("");
-    setEditCustomerEmail("");
-    setBirthdayVoucherAvailable(false);
-    setBirthdayVoucherYear(null);
-    setEditCustomerDateOfBirth("");
-    setEditCustomerPhone("");
-    setEditCustomerStreet("");
-    setEditCustomerZip("");
-    setEditCustomerCity("");
+      setCustomerPasswordError("");
+      setEditCustomerName("");
+      setEditCustomerEmail("");
+      setEditCustomerDateOfBirth("");
+      setEditCustomerPhone("");
+      setEditCustomerStreet("");
+      setEditCustomerZip("");
+      setEditCustomerCity("");
       return;
     }
 
@@ -1177,16 +1175,8 @@ useEffect(() => {
     setCustomerEditUnlocked(false);
     setCustomerPasswordInput("");
     setCustomerPasswordError("");
-    const voucher = computeBirthdayVoucherState(c);
     setEditCustomerName(c.name || "");
     setEditCustomerEmail(c.email || "");
-    setBirthdayVoucherAvailable(voucher.available);
-    setBirthdayVoucherYear(
-      typeof voucher.year === "number" ? voucher.year : null
-    );
-    setBirthdayVoucherRedeemedYear(
-      typeof voucher.redeemedYear === "number" ? voucher.redeemedYear : null
-    );
     setEditCustomerDateOfBirth(c.dateOfBirth || "");
     setEditCustomerPhone(c.phone || "");
     setEditCustomerStreet(c.street || "");
@@ -1575,7 +1565,10 @@ const handleSaveCustomerPoints = async () => {
       );
       return;
     }
-    if (!selectedCustomer.birthdayVoucherAvailable && !birthdayVoucherAvailable) {
+    const hasVoucher =
+      selectedCustomer.birthdayVoucherAvailable ||
+      (selectedCustomer.id === firebaseUser?.uid && birthdayVoucherAvailable);
+    if (!hasVoucher) {
       Alert.alert("Nicht verfügbar", "Kein Geburtstags-Gutschein aktiv.");
       return;
     }
