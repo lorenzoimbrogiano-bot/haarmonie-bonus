@@ -54,8 +54,8 @@ import {
   signOut,
 } from "firebase/auth";
 
-import { auth, db, functions as fbFunctions } from "../../src/firebaseConfig";
 import CustomerHome from "../../components/CustomerHome";
+import { auth, db, functions as fbFunctions } from "../../src/firebaseConfig";
 
 const VERIFY_ADMIN_PASSWORD_URL =
   "https://us-central1-haarmonie-bonus.cloudfunctions.net/verifyAdminPasswordHttp";
@@ -3625,19 +3625,19 @@ const styles = StyleSheet.create({
   },
   birthdayAdminActive: {
     backgroundColor: "#e6f4ea",
-    borderColor: "#b2d8b9",
+    borderColor: "#e6f4ea",
   },
   pointsCardActive: {
     backgroundColor: "#e6f4ea",
-    borderColor: "#b2d8b9",
+    borderColor: "#e6f4ea",
   },
   redemptionHeader: {
-    backgroundColor: "#e9f7ef",
+    backgroundColor: "#e6f4ea",
     borderRadius: 12,
     paddingHorizontal: 10,
   },
   redemptionHeaderTitle: {
-    color: "#256029",
+    color: "#000000ff",
   },
   adminActionButton: {
   backgroundColor: "#c49a6c",
@@ -3646,7 +3646,7 @@ const styles = StyleSheet.create({
   paddingHorizontal: 16,
   alignItems: "center",
   justifyContent: "center",
-  width: "100%",        // <- macht beide gleich breit
+  width: "100%",
   marginBottom: 10,
 },
 adminActionButtonPending: {
