@@ -27,6 +27,7 @@ type Reward = {
   description: string;
   pointsRequired: number;
   active?: boolean;
+  createdAt?: Date;
 };
 
 const DEFAULT_REWARDS: Reward[] = [
@@ -367,6 +368,12 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 20,
     paddingBottom: 32,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#a87132",
+    textAlign: "center",
+    marginVertical: 16,
   },
   title: {
     fontSize: 18,
