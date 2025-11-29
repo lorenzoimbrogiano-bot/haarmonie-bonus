@@ -11,13 +11,17 @@ import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCk5m1ODxcLC47Lz9HHQ_q15VyTsACMetU",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: "haarmonie-bonus.firebaseapp.com",
   projectId: "haarmonie-bonus",
   storageBucket: "haarmonie-bonus.firebasestorage.app",
   messagingSenderId: "940040973972",
   appId: "1:940040973972:web:8eca6cbaeab6ad7ec90e81",
 };
+
+if (!firebaseConfig.apiKey) {
+  throw new Error("Firebase API Key (EXPO_PUBLIC_FIREBASE_API_KEY) fehlt.");
+}
 
 const app = initializeApp(firebaseConfig);
 

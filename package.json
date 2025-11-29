@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "scan:secrets": "powershell -ExecutionPolicy Bypass -Command \"& './tools/gitleaks/gitleaks.exe' detect --source . --no-banner\""
+    "scan:secrets": "powershell -ExecutionPolicy Bypass -Command \"& './tools/gitleaks/gitleaks.exe' detect --config .gitleaks.toml --source . --no-banner\""
   },
   "dependencies": {
     "@dataconnect/generated": "file:src/dataconnect-generated",

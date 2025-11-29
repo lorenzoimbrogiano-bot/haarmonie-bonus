@@ -1,0 +1,7 @@
+title = "haarmonie-gitleaks"
+
+[allowlist]
+  paths = [
+    '''tools/gitleaks/.*''',
+    '''node_modules/.*'''
+  ]
