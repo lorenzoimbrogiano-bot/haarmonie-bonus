@@ -11,9 +11,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
-  Dimensions,
-  Easing,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -27,7 +24,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import ConfettiCannon from "react-native-confetti-cannon";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -59,7 +55,6 @@ import {
 } from "firebase/auth";
 
 import { auth, db, functions as fbFunctions } from "../../src/firebaseConfig";
-import BirthdayVoucherCard from "../../components/BirthdayVoucherCard";
 import CustomerHome from "../../components/CustomerHome";
 
 const VERIFY_ADMIN_PASSWORD_URL =
@@ -78,9 +73,6 @@ const EMPLOYEE_NAMES = [
   "Sarina",
   "Xenia",
 ];
-
-const CLOUD_FUNCTION_PUSH_URL =
-  "https://hellohaarmonie-cz1lyrucwa-uc.a.run.app"; // TODO: ersetzen
 
 const DEFAULT_REWARD_ACTIONS: RewardAction[] = [
   {
@@ -209,18 +201,7 @@ export default function BonusApp() {
   const [birthdayVoucherRedeemedYear, setBirthdayVoucherRedeemedYear] = useState<number | null>(null);
   const [rewardActions, setRewardActions] = useState<RewardAction[]>([]);
   const [rewardActionsLoading, setRewardActionsLoading] = useState(false);
-  const [rewardActionsBusyId, setRewardActionsBusyId] = useState<string | null>(null);
-  const [rewardActionTitle, setRewardActionTitle] = useState("");
-  const [rewardActionDescription, setRewardActionDescription] = useState("");
-  const [rewardActionPoints, setRewardActionPoints] = useState("");
-  const [rewardActionUrl, setRewardActionUrl] = useState("");
-  const [rewardActionOrder, setRewardActionOrder] = useState("");
-  const [rewardActionStartDate, setRewardActionStartDate] = useState("");
-  const [rewardActionEndDate, setRewardActionEndDate] = useState("");
-  const [rewardActionActive, setRewardActionActive] = useState(true);
-  const [editingRewardActionId, setEditingRewardActionId] = useState<string | null>(null);
   const [rewardActionsExpanded, setRewardActionsExpanded] = useState(false);
-  const [rewardActionsManageExpanded, setRewardActionsManageExpanded] = useState(false);
   const hasSeededRewardActions = useRef(false);
   const [selectedCustomerRewardClaims, setSelectedCustomerRewardClaims] = useState<
     Record<string, string | boolean>
@@ -607,7 +588,7 @@ useEffect(() => {
     );
 
     return () => unsubUser();
-  }, [firebaseUser?.uid]);
+  }, [firebaseUser?.uid, firebaseUser?.name, firebaseUser?.email]);
 
   // -----------------------------------
   // Reward-Aktionen laden (Firestore)
@@ -1546,139 +1527,7 @@ const handleSaveCustomerPoints = async () => {
       new Date(action.endDate) >= now;
 
     return startsOk && endsOk;
-  };
-
-  const resetRewardActionForm = () => {
-    setRewardActionTitle("");
-    setRewardActionDescription("");
-    setRewardActionPoints("");
-    setRewardActionUrl("");
-    setRewardActionOrder("");
-    setRewardActionStartDate("");
-    setRewardActionEndDate("");
-    setRewardActionActive(true);
-    setEditingRewardActionId(null);
-  };
-
-  const handleEditRewardAction = (action: RewardAction) => {
-    setEditingRewardActionId(action.id);
-    setRewardActionTitle(action.title);
-    setRewardActionDescription(action.description);
-    setRewardActionPoints(String(action.points));
-    setRewardActionUrl(action.url || "");
-    setRewardActionOrder(
-      typeof action.order === "number" ? String(action.order) : ""
-    );
-    setRewardActionStartDate(action.startDate || "");
-    setRewardActionEndDate(action.endDate || "");
-    setRewardActionActive(action.active !== false);
-    setRewardActionsExpanded(true);
-  };
-
-  const handleSaveRewardAction = async () => {
-    if (!firebaseUser?.isAdmin) return;
-
-    const title = rewardActionTitle.trim();
-    const description = rewardActionDescription.trim();
-    const url = rewardActionUrl.trim();
-    const order = rewardActionOrder.trim()
-      ? Number.parseInt(rewardActionOrder.trim(), 10)
-      : 0;
-    const points = Number.parseInt(rewardActionPoints.trim(), 10);
-    const startDate = rewardActionStartDate.trim();
-    const endDate = rewardActionEndDate.trim();
-
-    if (!title || !description) {
-      Alert.alert("Angaben fehlen", "Bitte Titel und Beschreibung ausfüllen.");
-      return;
-    }
-    if (!Number.isFinite(points) || points <= 0) {
-      Alert.alert("Punkte prüfen", "Bitte eine Punktzahl größer 0 angeben.");
-      return;
-    }
-
-    try {
-      setRewardActionsBusyId(editingRewardActionId || "new");
-      const payload: any = {
-        title,
-        description,
-        points,
-        url,
-        active: rewardActionActive,
-        order,
-        startDate,
-        endDate,
-        updatedAt: serverTimestamp(),
-      };
-
-      if (editingRewardActionId) {
-        const ref = doc(db, "rewardActions", editingRewardActionId);
-        await updateDoc(ref, payload);
-      } else {
-        await addDoc(collection(db, "rewardActions"), {
-          ...payload,
-          createdAt: serverTimestamp(),
-        });
-      }
-
-      resetRewardActionForm();
-      setRewardActionsExpanded(true);
-      Alert.alert("Gespeichert", "Prämien-Aktion wurde gespeichert.");
-    } catch (err) {
-      console.error("Reward-Aktion speichern fehlgeschlagen:", err);
-      Alert.alert("Fehler", "Die Aktion konnte nicht gespeichert werden.");
-    } finally {
-      setRewardActionsBusyId(null);
-    }
-  };
-
-  const handleDeleteRewardAction = async (actionId: string) => {
-    if (!firebaseUser?.isAdmin || !actionId) return;
-    Alert.alert(
-      "Aktion löschen",
-      "Möchtest du diese Prämien-Aktion wirklich löschen?",
-      [
-        { text: "Abbrechen", style: "cancel" },
-        {
-          text: "Löschen",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setRewardActionsBusyId(actionId);
-              const ref = doc(db, "rewardActions", actionId);
-              await deleteDoc(ref);
-              if (editingRewardActionId === actionId) {
-                resetRewardActionForm();
-              }
-            } catch (err) {
-              console.error("Aktion löschen fehlgeschlagen:", err);
-              Alert.alert("Fehler", "Die Aktion konnte nicht gelöscht werden.");
-            } finally {
-              setRewardActionsBusyId(null);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleToggleRewardActionActive = async (action: RewardAction) => {
-    if (!firebaseUser?.isAdmin) return;
-    const currentActive = action.active !== false;
-    const nextActive = !currentActive;
-    try {
-      setRewardActionsBusyId(action.id);
-      const ref = doc(db, "rewardActions", action.id);
-      await updateDoc(ref, { active: nextActive });
-    } catch (err) {
-      console.error("Aktiv-Status ?ndern fehlgeschlagen:", err);
-      Alert.alert("Fehler", "Status konnte nicht ge?ndert werden.");
-    } finally {
-      setRewardActionsBusyId(null);
-    }
-  };
-
-  const handleAdminApproveRewardAction = async (action: RewardAction) => {
+  };const handleAdminApproveRewardAction = async (action: RewardAction) => {
     if (!firebaseUser?.isAdmin || !selectedCustomer) return;
 
     const employee = selectedAdminEmployee;

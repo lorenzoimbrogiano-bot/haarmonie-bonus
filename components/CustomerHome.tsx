@@ -1,6 +1,6 @@
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import BirthdayVoucherCard from "./BirthdayVoucherCard";
+import { BirthdayVoucherCard } from "./BirthdayVoucherCard";
 
 type Props = {
   styles: any;
