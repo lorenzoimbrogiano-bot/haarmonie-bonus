@@ -117,8 +117,8 @@ export function BirthdayVoucherCard({ visible, year, onBookPress }: Props) {
           origin={{ x: width / 2, y: -10 }}
           autoStart
           fadeOut
-          explosionSpeed={450}
-          fallSpeed={2200}
+          explosionSpeed={1400}
+          fallSpeed={2400}
         />
       </Animated.View>
     </View>
