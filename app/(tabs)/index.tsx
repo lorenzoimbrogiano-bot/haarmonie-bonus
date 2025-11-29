@@ -230,8 +230,6 @@ export default function BonusApp() {
   >([]);
   const [redemptionBusyId, setRedemptionBusyId] = useState<string | null>(null);
   const [redemptionEmployeeName, setRedemptionEmployeeName] = useState("");
-  const [redemptionEmployeeDropdownOpen, setRedemptionEmployeeDropdownOpen] =
-    useState(false);
 
   // Admin-/Mitarbeiterbereich
   const [isAdminView, setIsAdminView] = useState(false);
@@ -243,7 +241,6 @@ export default function BonusApp() {
   const [editEmployeeName, setEditEmployeeName] = useState("");
   const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
   const [rewardEmployeeName, setRewardEmployeeName] = useState("");
-  const [rewardEmployeeDropdownOpen, setRewardEmployeeDropdownOpen] = useState(false);
   const [redemptionsExpanded, setRedemptionsExpanded] = useState(false);
   const [editCustomerName, setEditCustomerName] = useState<string>("");
   const [editCustomerEmail, setEditCustomerEmail] = useState<string>("");
@@ -1148,8 +1145,6 @@ useEffect(() => {
       setRewardEmployeeName("");
       setRedemptionEmployeeName("");
       setEmployeeDropdownOpen(false);
-      setRewardEmployeeDropdownOpen(false);
-      setRedemptionEmployeeDropdownOpen(false);
       setRewardActionsExpanded(false);
       setRedemptionBusyId(null);
       setCustomerEditExpanded(false);
@@ -1175,9 +1170,7 @@ useEffect(() => {
     setEditEmployeeName("");
     setRewardEmployeeName("");
     setRedemptionEmployeeName("");
-    setRewardEmployeeDropdownOpen(false);
     setEmployeeDropdownOpen(false);
-    setRedemptionEmployeeDropdownOpen(false);
     setRewardActionsExpanded(false);
     setRedemptionBusyId(null);
     setCustomerEditExpanded(false);
@@ -1574,7 +1567,7 @@ const handleSaveCustomerPoints = async () => {
 
   const handleRedeemBirthdayVoucher = async () => {
     if (!selectedCustomer) return;
-    const employee = rewardEmployeeName.trim() || editEmployeeName.trim();
+    const employee = selectedAdminEmployee;
     if (!employee) {
       Alert.alert(
         "Mitarbeiter auswählen",
@@ -1812,7 +1805,7 @@ const handleSaveCustomerPoints = async () => {
   const handleAdminApproveRewardAction = async (action: RewardAction) => {
     if (!firebaseUser?.isAdmin || !selectedCustomer) return;
 
-    const employee = rewardEmployeeName.trim() || editEmployeeName.trim();
+    const employee = selectedAdminEmployee;
     if (!employee) {
       Alert.alert(
         "Mitarbeiter auswählen",
@@ -1899,7 +1892,7 @@ const handleSaveCustomerPoints = async () => {
   const handleAdminApproveRedemption = async (redemption: RewardRedemption) => {
     if (!firebaseUser?.isAdmin || !selectedCustomer) return;
 
-    if (!redemptionEmployeeName.trim()) {
+    if (!selectedAdminEmployee) {
       Alert.alert(
         "Mitarbeiter auswählen",
         "Bitte Mitarbeiter auswählen, der die Einlösung bestätigt."
@@ -1913,7 +1906,7 @@ const handleSaveCustomerPoints = async () => {
     }
     if (redemptionBusyId === redemption.id) return;
 
-    const employee = redemptionEmployeeName.trim();
+    const employee = selectedAdminEmployee;
     let updatedPoints: number | null = null;
 
     setRedemptionBusyId(redemption.id);
@@ -2403,8 +2396,12 @@ const handleSaveCustomerPoints = async () => {
   const hasPendingRewardClaims = sortedRewardActions.some(
     (action) => selectedCustomerRewardClaims[action.id] === "pending"
   );
-  const hasActionEmployee =
-    rewardEmployeeName.trim().length > 0 || editEmployeeName.trim().length > 0;
+  const selectedAdminEmployee = (
+    editEmployeeName ||
+    rewardEmployeeName ||
+    redemptionEmployeeName
+  ).trim();
+  const hasActionEmployee = selectedAdminEmployee.length > 0;
 
   const pendingRedemptions = selectedCustomerRedemptions.filter(
     (r) => r.status !== "approved"
@@ -2448,14 +2445,18 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                 styles.adminActionButton,
                 styles.actionButton,
                 { marginTop: 8 },
-                (busy || !redemptionEmployeeName.trim()) &&
+                (busy || !hasActionEmployee) &&
                   styles.actionButtonDisabled,
               ]}
-              disabled={busy || !redemptionEmployeeName.trim()}
+              disabled={busy || !hasActionEmployee}
               onPress={() => handleAdminApproveRedemption(r)}
             >
               <Text style={styles.primaryButtonText}>
-                {busy ? "Bitte warten..." : "Bestätigen"}
+                {!hasActionEmployee
+                  ? "Mitarbeiter auswählen"
+                  : busy
+                  ? "Bitte warten..."
+                  : "Bestätigen"}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -2887,25 +2888,20 @@ const renderRedemptionRow = (r: RewardRedemption) => {
 
                   {selectedCustomer && (
                     <>
-                      {/* Punktestand bearbeiten */}
-                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
-                        <Text style={styles.sectionTitle}>
-                          Punkte verbuchen (Euro = Punkte)
+                                            <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                        <Text style={styles.sectionTitle}>Mitarbeiter/in auswählen</Text>
+                        <Text style={styles.modalText}>
+                          Gilt für alle Admin-Aktionen (Punkte, Prämien, Gutscheine).
                         </Text>
-                        <Text style={{ fontSize: 13, marginBottom: 8 }}>
-                          {selectedCustomer.name} ({selectedCustomer.email})
-                        </Text>
-
-                        <Text style={styles.loginLabel}>Mitarbeiter/in</Text>
                         <TouchableOpacity
                           style={styles.dropdownTrigger}
                           onPress={() => setEmployeeDropdownOpen((prev) => !prev)}
                         >
                           <Text style={styles.dropdownTriggerText}>
-                            {editEmployeeName || "Mitarbeiter auswählen"}
+                            {selectedAdminEmployee || "Mitarbeiter auswählen"}
                           </Text>
                           <Text style={styles.dropdownChevron}>
-                            {employeeDropdownOpen ? "▼" : "▶"}
+                            {employeeDropdownOpen ? "?" : "?"}
                           </Text>
                         </TouchableOpacity>
                         {employeeDropdownOpen && (
@@ -2915,17 +2911,19 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                                 key={name}
                                 style={[
                                   styles.dropdownItem,
-                                  editEmployeeName === name && styles.dropdownItemActive,
+                                  selectedAdminEmployee === name && styles.dropdownItemActive,
                                 ]}
                                 onPress={() => {
                                   setEditEmployeeName(name);
+                                  setRewardEmployeeName(name);
+                                  setRedemptionEmployeeName(name);
                                   setEmployeeDropdownOpen(false);
                                 }}
                               >
                                 <Text
                                   style={[
                                     styles.dropdownItemText,
-                                    editEmployeeName === name && styles.dropdownItemTextActive,
+                                    selectedAdminEmployee === name && styles.dropdownItemTextActive,
                                   ]}
                                 >
                                   {name}
@@ -2934,6 +2932,18 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                             ))}
                           </View>
                         )}
+                      </View>
+{/* Punktestand bearbeiten */}
+                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                        <Text style={styles.sectionTitle}>
+                          Punkte verbuchen (Euro = Punkte)
+                        </Text>
+                        <Text style={{ fontSize: 13, marginBottom: 8 }}>
+                          {selectedCustomer.name} ({selectedCustomer.email})
+                        </Text>
+
+                        <Text style={styles.loginLabel}>Mitarbeiter/in</Text>
+                        <Text style={[styles.dropdownTriggerText, { marginBottom: 6 }]}>{selectedAdminEmployee || "Bitte oben auswählen"}</Text>
 
                         <Text style={styles.loginLabel}>Betrag in Euro</Text>
                         <TextInput
@@ -2984,49 +2994,8 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                             </Text>
 
                             <Text style={[styles.loginLabel, { marginTop: 10 }]}>
-                              Mitarbeiter/in
+                              Mitarbeiter/in: {selectedAdminEmployee || "Bitte oben auswählen"}
                             </Text>
-                            <TouchableOpacity
-                              style={styles.dropdownTrigger}
-                              onPress={() =>
-                                setRedemptionEmployeeDropdownOpen((prev) => !prev)
-                              }
-                            >
-                              <Text style={styles.dropdownTriggerText}>
-                                {redemptionEmployeeName || "Mitarbeiter auswählen"}
-                              </Text>
-                              <Text style={styles.dropdownChevron}>
-                                {redemptionEmployeeDropdownOpen ? "▼" : "▶"}
-                              </Text>
-                            </TouchableOpacity>
-                            {redemptionEmployeeDropdownOpen && (
-                              <View style={styles.dropdownList}>
-                                {EMPLOYEE_NAMES.map((name) => (
-                                  <TouchableOpacity
-                                    key={name}
-                                    style={[
-                                      styles.dropdownItem,
-                                      redemptionEmployeeName === name &&
-                                        styles.dropdownItemActive,
-                                    ]}
-                                    onPress={() => {
-                                      setRedemptionEmployeeName(name);
-                                      setRedemptionEmployeeDropdownOpen(false);
-                                    }}
-                                  >
-                                    <Text
-                                      style={[
-                                        styles.dropdownItemText,
-                                        redemptionEmployeeName === name &&
-                                          styles.dropdownItemTextActive,
-                                      ]}
-                                    >
-                                      {name}
-                                    </Text>
-                                  </TouchableOpacity>
-                                ))}
-                              </View>
-                            )}
 
                             {pendingRedemptions.length === 0 &&
                             visibleApprovedRedemptions.length === 0 ? (
@@ -3098,47 +3067,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                         {rewardActionsExpanded && (
                           <>
                             <Text style={styles.loginLabel}>Mitarbeiter/in</Text>
-                            <TouchableOpacity
-                              style={styles.dropdownTrigger}
-                              onPress={() =>
-                                setRewardEmployeeDropdownOpen((prev) => !prev)
-                              }
-                            >
-                              <Text style={styles.dropdownTriggerText}>
-                                {rewardEmployeeName || "Mitarbeiter auswählen"}
-                              </Text>
-                              <Text style={styles.dropdownChevron}>
-                                {rewardEmployeeDropdownOpen ? "\u25BC" : "\u25B6"}
-                              </Text>
-                            </TouchableOpacity>
-                            {rewardEmployeeDropdownOpen && (
-                              <View style={styles.dropdownList}>
-                                {EMPLOYEE_NAMES.map((name) => (
-                                  <TouchableOpacity
-                                    key={name}
-                                    style={[
-                                      styles.dropdownItem,
-                                      rewardEmployeeName === name &&
-                                        styles.dropdownItemActive,
-                                    ]}
-                                    onPress={() => {
-                                      setRewardEmployeeName(name);
-                                      setRewardEmployeeDropdownOpen(false);
-                                    }}
-                                  >
-                                    <Text
-                                      style={[
-                                        styles.dropdownItemText,
-                                        rewardEmployeeName === name &&
-                                          styles.dropdownItemTextActive,
-                                      ]}
-                                    >
-                                      {name}
-                                    </Text>
-                                  </TouchableOpacity>
-                                ))}
-                              </View>
-                            )}
+                            <Text style={[styles.dropdownTriggerText, { marginBottom: 6 }]}>{selectedAdminEmployee || "Bitte oben auswählen"}</Text>
 
                             {rewardActionsLoading && sortedRewardActions.length === 0 ? (
                               <ActivityIndicator style={{ marginTop: 10 }} />
