@@ -1,4 +1,17 @@
 import { useRouter } from "expo-router";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,19 +25,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
 
 import { auth, db } from "../src/firebaseConfig";
 
@@ -566,6 +566,10 @@ const styles = StyleSheet.create({
   },
   dropdownTrigger: {
     justifyContent: "center",
+  },
+  dropdownTriggerText: {
+    fontSize: 14,
+    color: "#333",
   },
   dropdownList: {
     borderWidth: 1,
