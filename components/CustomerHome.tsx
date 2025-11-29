@@ -128,7 +128,7 @@ export default function CustomerHome({
                   </View>
                 </TouchableOpacity>
 
-                <View style={{ marginTop: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ marginTop: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                   <Text
                     style={[
                       styles.actionPoints,
@@ -145,7 +145,7 @@ export default function CustomerHome({
                       style={[
                         styles.actionDescription,
                         {
-                          marginTop: 4,
+                          marginTop: 1,
                           fontSize: 13,
                           fontWeight: "600",
                           color: "#a06f34",
@@ -154,7 +154,7 @@ export default function CustomerHome({
                     >
                       Jetzt erledigen und im Salon freischalten lassen.
                     </Text>
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 5 }}>
                       {action.url ? (
                         <TouchableOpacity
                           style={[styles.secondaryButton, { flex: 1 }]}
