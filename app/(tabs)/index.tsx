@@ -2965,7 +2965,13 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                           <Text style={styles.primaryButtonText}>Punkte speichern</Text>
                         </TouchableOpacity>
                       </View>
-                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                      <View
+                        style={[
+                          styles.pointsCard,
+                          { marginTop: 20 },
+                          pendingRedemptions.length > 0 && styles.pointsCardActive,
+                        ]}
+                      >
                         <TouchableOpacity
                           style={[
                             styles.accordionHeader,
@@ -3044,7 +3050,13 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                           </>
                         )}
                       </View>
-                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                      <View
+                        style={[
+                          styles.pointsCard,
+                          { marginTop: 20 },
+                          hasPendingRewardClaims && styles.pointsCardActive,
+                        ]}
+                      >
                         <TouchableOpacity
                           style={[
                             styles.accordionHeader,
@@ -3118,7 +3130,14 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                           </>
                         )}
                       </View>
-                      <View style={[styles.pointsCard, { marginTop: 20 }]}>
+                      <View
+                        style={[
+                          styles.pointsCard,
+                          { marginTop: 20 },
+                          selectedCustomer?.birthdayVoucherAvailable &&
+                            styles.birthdayAdminActive,
+                        ]}
+                      >
                         <Text style={styles.sectionTitle}>Geburtstags-Gutschein</Text>
                         <Text style={styles.modalText}>
                           Markiere den 5€-Gutschein als eingelöst, wenn der Kunde ihn nutzt.
@@ -4082,6 +4101,14 @@ const styles = StyleSheet.create({
     elevation: 6,
     borderWidth: 0,
     borderColor: "transparent",
+  },
+  birthdayAdminActive: {
+    backgroundColor: "#e6f4ea",
+    borderColor: "#b2d8b9",
+  },
+  pointsCardActive: {
+    backgroundColor: "#e6f4ea",
+    borderColor: "#b2d8b9",
   },
   redemptionHeader: {
     backgroundColor: "#e9f7ef",
