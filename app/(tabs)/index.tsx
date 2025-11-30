@@ -175,6 +175,7 @@ export default function BonusApp() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
+  const verificationEmailTimestampRef = useRef<number | null>(null);
 
   // Login/Registrierung
   const [email, setEmail] = useState("");
@@ -327,10 +328,13 @@ useEffect(() => {
     const normalized = targetEmail.trim().toLowerCase();
     const target = normalized || "deine E-Mail-Adresse";
     setVerificationEmail(normalized || null);
+    setAuthError(null);
     setAuthNotice(
       `Bitte bestätige deine E-Mail-Adresse. Wir haben dir eine Mail an ${target} geschickt. Prüfe dein Postfach (auch Spam) und tippe danach erneut auf "Einloggen".`
     );
   }, []);
+
+  const VERIFICATION_RESEND_COOLDOWN_MS = 5 * 60 * 1000; // 5 Minuten zwischen erneuten Verifizierungs-Mails
 
   // Hilfsfunktion: Geburtsdatum validieren & vereinheitlichen (TT.MM.JJJJ)
   const normalizeBirthDate = (value: string) => {
@@ -542,10 +546,21 @@ useEffect(() => {
           if (!user.emailVerified) {
             const lowerMail = (user.email || "").toLowerCase();
             let sent = false;
-            if (!verificationEmail || verificationEmail !== lowerMail) {
+            const now = Date.now();
+            const lastSentTs = verificationEmailTimestampRef.current;
+            const sameMail = verificationEmail && verificationEmail === lowerMail;
+            const withinCooldown =
+              typeof lastSentTs === "number" && now - lastSentTs < VERIFICATION_RESEND_COOLDOWN_MS;
+
+            if (!sameMail) {
+              verificationEmailTimestampRef.current = null;
+            }
+
+            if (!sameMail && !withinCooldown) {
               try {
                 await sendEmailVerification(user);
                 sent = true;
+                verificationEmailTimestampRef.current = now;
               } catch (err) {
                 console.error("Verifizierungs-Mail konnte nicht gesendet werden:", err);
                 if ((err as any)?.code === "auth/too-many-requests") {
@@ -556,6 +571,10 @@ useEffect(() => {
                   setAuthError("Verifizierungs-E-Mail konnte nicht gesendet werden.");
                 }
               }
+            } else if (withinCooldown) {
+              setAuthError(
+                "Verifizierungs-E-Mail wurde gerade erst gesendet. Bitte warte ein paar Minuten, prüfe dein Postfach und versuche es erneut."
+              );
             }
             if (sent || (verificationEmail && verificationEmail === lowerMail)) {
               remindEmailVerification(user.email || "");
@@ -580,7 +599,7 @@ useEffect(() => {
     });
 
     return () => unsub();
-  }, [loadUserData, verificationEmail, remindEmailVerification]);
+  }, [loadUserData, verificationEmail, remindEmailVerification, VERIFICATION_RESEND_COOLDOWN_MS]);
 
   // -----------------------------------
   // Live-Updates für User-Daten
@@ -969,6 +988,7 @@ useEffect(() => {
       setFirebaseUser(null);
       setAuthNotice(null);
       setVerificationEmail(null);
+      verificationEmailTimestampRef.current = null;
       setAuthError(null);
       setPoints(0);
       setVisitHistory([]);
