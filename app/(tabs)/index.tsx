@@ -11,14 +11,12 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -55,8 +53,16 @@ import {
   signOut,
 } from "firebase/auth";
 
+import AuthForm from "../../components/AuthForm";
 import CustomerHome from "../../components/CustomerHome";
+import { useAuthFormState } from "../../hooks/useAuthFormState";
 import { auth, db, functions as fbFunctions } from "../../src/firebaseConfig";
+import {
+  defaultBirthDate,
+  getBirthDayMonth,
+  normalizeBirthDate,
+  parseBirthDate,
+} from "../../utils/birthDate";
 
 const VERIFY_ADMIN_PASSWORD_URL =
   "https://us-central1-haarmonie-bonus.cloudfunctions.net/verifyAdminPasswordHttp";
@@ -162,37 +168,55 @@ export default function BonusApp() {
   const router = useRouter();
   const keyboardOffset = Platform.OS === "ios" ? 10 : 80;
   const [showIntro, setShowIntro] = useState(true);
+  const {
+    authChecked,
+    setAuthChecked,
+    authBusy,
+    setAuthBusy,
+    authError,
+    setAuthError,
+    authNotice,
+    setAuthNotice,
+    verificationEmail,
+    setVerificationEmail,
+    verificationEmailTimestampRef,
+    isRegisterMode,
+    setIsRegisterMode,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    firstName,
+    setFirstName,
+    lastName,
+    setLastName,
+    birthDate,
+    setBirthDate,
+    street,
+    setStreet,
+    zip,
+    setZip,
+    city,
+    setCity,
+    phone,
+    setPhone,
+    consentMarketing,
+    setConsentMarketing,
+    birthDatePickerVisible,
+    setBirthDatePickerVisible,
+    birthDatePickerDate,
+    setBirthDatePickerDate,
+    birthDatePickerTarget,
+    setBirthDatePickerTarget,
+    resetAuthFeedback,
+  } = useAuthFormState();
+
   const [firebaseUser, setFirebaseUser] = useState<{
     uid: string;
     email: string;
     name: string;
     isAdmin: boolean;
   } | null>(null);
-
-  const [authChecked, setAuthChecked] = useState(false);
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authNotice, setAuthNotice] = useState<string | null>(null);
-  const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
-  const verificationEmailTimestampRef = useRef<number | null>(null);
-
-  // Login/Registrierung
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  // Registrierung – Stammdaten
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [street, setStreet] = useState("");
-  const [zip, setZip] = useState("");
-  const [city, setCity] = useState("");
-  const [phone, setPhone] = useState("");
-  const [consentMarketing, setConsentMarketing] = useState(false);
-  const [birthDatePickerVisible, setBirthDatePickerVisible] = useState(false);
-  const [birthDatePickerDate, setBirthDatePickerDate] = useState<Date | null>(null);
-  const [birthDatePickerTarget, setBirthDatePickerTarget] = useState<"register" | "edit" | null>(null);
 
   // Kundensicht (eigene Punkte)
   const [points, setPoints] = useState(0);
@@ -324,69 +348,20 @@ useEffect(() => {
     return ALLOWED_ADMINS.includes(mail.toLowerCase());
   };
 
-  const remindEmailVerification = useCallback((targetEmail: string) => {
-    const normalized = targetEmail.trim().toLowerCase();
-    const target = normalized || "deine E-Mail-Adresse";
-    setVerificationEmail(normalized || null);
-    setAuthError(null);
-    setAuthNotice(
-      `Bitte bestätige deine E-Mail-Adresse. Wir haben dir eine Mail an ${target} geschickt. Prüfe dein Postfach (auch Spam) und tippe danach erneut auf "Einloggen".`
-    );
-  }, []);
+  const remindEmailVerification = useCallback(
+    (targetEmail: string) => {
+      const normalized = targetEmail.trim().toLowerCase();
+      const target = normalized || "deine E-Mail-Adresse";
+      setVerificationEmail(normalized || null);
+      setAuthError(null);
+      setAuthNotice(
+        `Bitte bestätige deine E-Mail-Adresse. Wir haben dir eine Mail an ${target} geschickt. Prüfe dein Postfach (auch Spam) und tippe danach erneut auf "Einloggen".`
+      );
+    },
+    [setAuthError, setAuthNotice, setVerificationEmail]
+  );
 
   const VERIFICATION_RESEND_COOLDOWN_MS = 5 * 60 * 1000; // 5 Minuten zwischen erneuten Verifizierungs-Mails
-
-  // Hilfsfunktion: Geburtsdatum validieren & vereinheitlichen (TT.MM.JJJJ)
-  const normalizeBirthDate = (value: string) => {
-    const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value.trim());
-    if (!match) return null;
-
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = Number(match[3]);
-
-    const date = new Date(year, month - 1, day);
-    const isValidDate =
-      date.getFullYear() === year &&
-      date.getMonth() === month - 1 &&
-      date.getDate() === day;
-
-    if (!isValidDate) return null;
-
-    const today = new Date();
-    if (date > today) return null;
-
-    return `${String(day).padStart(2, "0")}.${String(month).padStart(2, "0")}.${year}`;
-  };
-
-  const parseBirthDate = (value: string) => {
-    const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value.trim());
-    if (!match) return null;
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = Number(match[3]);
-    const d = new Date(year, month - 1, day);
-    if (
-      d.getFullYear() === year &&
-      d.getMonth() === month - 1 &&
-      d.getDate() === day
-    ) {
-      return d;
-    }
-    return null;
-  };
-
-  const defaultBirthDate = () => {
-    const today = new Date();
-    return new Date(today.getFullYear() - 25, today.getMonth(), today.getDate());
-  };
-
-  const getBirthDayMonth = (normalized: string | null) => {
-    if (!normalized) return { birthDay: null, birthMonth: null };
-    const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(normalized);
-    if (!match) return { birthDay: null, birthMonth: null };
-    return { birthDay: Number(match[1]), birthMonth: Number(match[2]) };
-  };
 
   const computeBirthdayVoucherState = (data: any) => {
     const nowYear = new Date().getFullYear();
@@ -599,7 +574,17 @@ useEffect(() => {
     });
 
     return () => unsub();
-  }, [loadUserData, verificationEmail, remindEmailVerification, VERIFICATION_RESEND_COOLDOWN_MS]);
+  }, [
+    loadUserData,
+    verificationEmail,
+    remindEmailVerification,
+    VERIFICATION_RESEND_COOLDOWN_MS,
+    setAuthChecked,
+    setAuthNotice,
+    setVerificationEmail,
+    verificationEmailTimestampRef,
+    setAuthError,
+  ]);
 
   // -----------------------------------
   // Live-Updates für User-Daten
@@ -809,7 +794,7 @@ useEffect(() => {
         setSelectedCustomer(null);
       }
       return undefined;
-    }, [firebaseUser])
+    }, [firebaseUser, setIsRegisterMode])
   );
 
   // -----------------------------------
@@ -1914,248 +1899,38 @@ const handleSaveCustomerPoints = async () => {
   // --- Login-Screen ---
   if (!firebaseUser) {
     return (
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={keyboardOffset}
-        >
-          <ScrollView
-            contentContainerStyle={styles.loginScroll}
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
-            keyboardDismissMode="interactive"
-          >
-          <Image
-            source={require("../../assets/logo.png")}
-            style={styles.logoImage}
-          />
-          <Text style={styles.loginTitle}>
-            {isRegisterMode
-              ? "Registriere dich für deine Bonuspunkte"
-              : "Willkommen zu deinem\npersönlichen Beauty-Begleiter\njederzeit und überall"}
-          </Text>
-
-                    {isRegisterMode && (
-            <>
-              <View style={styles.loginField}>
-                <Text style={styles.loginLabel}>Vorname*</Text>
-                <TextInput
-                  style={styles.loginInput}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="z. B. Cynthia"
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  textContentType="givenName"
-                  importantForAutofill="yes"
-                  autoComplete="name-given"
-                />
-              </View>
-
-              <View style={styles.loginField}>
-                <Text style={styles.loginLabel}>Nachname*</Text>
-                <TextInput
-                  style={styles.loginInput}
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholder="z. B. Imbrogiano"
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  textContentType="familyName"
-                  importantForAutofill="yes"
-                  autoComplete="name-family"
-                />
-              </View>
-
-              <View style={styles.loginField}>
-                <Text style={styles.loginLabel}>Straße*</Text>
-                <TextInput
-                  style={styles.loginInput}
-                  value={street}
-                  onChangeText={setStreet}
-                  placeholder="z. B. Musterstraße 12"
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  textContentType="streetAddressLine1"
-                  importantForAutofill="yes"
-                  autoComplete="street-address"
-                />
-              </View>
-
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={[styles.loginField, { flex: 1 }]}>
-                  <Text style={styles.loginLabel}>PLZ*</Text>
-                  <TextInput
-                    style={styles.loginInput}
-                    value={zip}
-                    onChangeText={setZip}
-                    placeholder="z. B. 74523"
-                    keyboardType="number-pad"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    textContentType="postalCode"
-                    importantForAutofill="yes"
-                    autoComplete="postal-code"
-                  />
-                </View>
-                <View style={[styles.loginField, { flex: 2 }]}>
-                  <Text style={styles.loginLabel}>Ort*</Text>
-                  <TextInput
-                    style={styles.loginInput}
-                    value={city}
-                    onChangeText={setCity}
-                    placeholder="z. B. Schwäbisch Hall"
-                    autoCapitalize="words"
-                    autoCorrect={false}
-                    importantForAutofill="yes"
-                    textContentType="addressCity"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.loginField}>
-                <Text style={styles.loginLabel}>Telefonnummer*</Text>
-                <TextInput
-                  style={styles.loginInput}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="z. B. 0176 12345678"
-                  keyboardType="phone-pad"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="telephoneNumber"
-                  importantForAutofill="yes"
-                  autoComplete="tel"
-                />
-              </View>
-
-              <View style={styles.loginField}>
-                <Text style={styles.loginLabel}>Geburtsdatum (TT.MM.JJJJ)*</Text>
-                <TouchableOpacity
-                  style={[styles.loginInput, styles.dateInput]}
-                  activeOpacity={0.7}
-                  onPress={() => openBirthDatePicker("register")}
-                >
-                  <Text
-                    style={[
-                      styles.dateInputText,
-                      birthDate ? styles.dateInputTextValue : null,
-                    ]}
-                  >
-                    {birthDate || "Datum auswählen"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View
-                style={[
-                  styles.loginField,
-                  { flexDirection: "row", alignItems: "center" },
-                ]}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.loginLabel}>
-                    Zustimmung zu Push- und E-Mail-Nachrichten*
-                  </Text>
-                  <Text style={{ fontSize: 11, color: "#777" }}>
-                    Ich bin einverstanden, dass Haarmonie by Cynthia mich zu
-                    Angeboten und Terminen per App-Push und E-Mail informiert.
-                  </Text>
-                </View>
-                <Switch
-                  value={consentMarketing}
-                  onValueChange={setConsentMarketing}
-                  thumbColor={consentMarketing ? "#c49a6c" : "#f4f3f4"}
-                  trackColor={{ false: "#ccc", true: "#f0e0cf" }}
-                />
-              </View>
-            </>
-          )}
-
-          <View style={styles.loginField}>
-            <Text style={styles.loginLabel}>E-Mail</Text>
-            <TextInput
-  style={styles.loginInput}
-  value={email}
-  onChangeText={setEmail}
-  placeholder="Deine E-Mail-Adresse"
-  keyboardType="email-address"
-  autoCapitalize="none"
-  autoCorrect={false}
-  textContentType="emailAddress"
-  importantForAutofill="yes"
-  autoComplete="email"
-/>
-          </View>
-
-          <View style={styles.loginField}>
-            <Text style={styles.loginLabel}>Passwort</Text>
-            <TextInput
-  style={styles.loginInput}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Passwort"
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          textContentType="password"
-          importantForAutofill="yes"
-          autoComplete="password"
-/>
-          </View>
-
-          {authNotice ? (
-            <View style={styles.loginNoticeBox}>
-              <Text style={styles.loginNotice}>{authNotice}</Text>
-            </View>
-          ) : null}
-
-          {authError && (
-            <Text style={styles.loginError}>{authError}</Text>
-          )}
-
-          <TouchableOpacity
-            style={styles.adminActionButton}
-            onPress={handleAuthSubmit}
-            disabled={authBusy}
-          >
-            <Text style={styles.primaryButtonText}>
-              {authBusy
-                ? "Bitte warten..."
-                : isRegisterMode
-                ? "Registrieren"
-                : "Einloggen"}
-            </Text>
-          </TouchableOpacity>
-
-          {!isRegisterMode && (
-            <TouchableOpacity
-              style={{ marginTop: 10 }}
-              onPress={handlePasswordReset}
-            >
-              <Text style={styles.loginLink}>Passwort vergessen?</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={{ marginTop: 16 }}
-            onPress={() => {
-              setIsRegisterMode((m) => !m);
-              setAuthError(null);
-              setAuthNotice(null);
-              setVerificationEmail(null);
-            }}
-          >
-            <Text style={styles.loginLink}>
-              {isRegisterMode
-                ? "Du hast schon ein Konto? Jetzt einloggen."
-                : "Noch kein Konto? Jetzt registrieren."}
-            </Text>
-          </TouchableOpacity>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+      <AuthForm
+        isRegisterMode={isRegisterMode}
+        authBusy={authBusy}
+        authError={authError}
+        authNotice={authNotice}
+        email={email}
+        password={password}
+        firstName={firstName}
+        lastName={lastName}
+        street={street}
+        zip={zip}
+        city={city}
+        phone={phone}
+        birthDate={birthDate}
+        consentMarketing={consentMarketing}
+        setEmail={setEmail}
+        setPassword={setPassword}
+        setFirstName={setFirstName}
+        setLastName={setLastName}
+        setStreet={setStreet}
+        setZip={setZip}
+        setCity={setCity}
+        setPhone={setPhone}
+        setConsentMarketing={setConsentMarketing}
+        openBirthDatePicker={openBirthDatePicker}
+        handleAuthSubmit={handleAuthSubmit}
+        handlePasswordReset={handlePasswordReset}
+        setIsRegisterMode={setIsRegisterMode}
+        resetAuthFeedback={resetAuthFeedback}
+        styles={styles}
+        keyboardOffset={keyboardOffset}
+      />
     );
   }
 
