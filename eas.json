@@ -15,8 +15,7 @@
                                      "autoIncrement":  true,
                                      "android":  {
                                                      "buildType":  "apk"
-                                                 },
-                                     "installCommand":  "npm install"
+                                                 }
                                  }
               },
     "submit":  {
