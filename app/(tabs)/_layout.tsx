@@ -12,6 +12,8 @@ export default function TabLayout() {
   const PHONE_NUMBER = '+4979197825477';
   const WHATSAPP_NUMBER = '4979197825477';
   const EMAIL_ADDRESS = 'info@haarmonie-sha.de';
+  const FACEBOOK_URL = 'https://www.facebook.com/haarmoniebycynthia';
+  const INSTAGRAM_URL = 'https://www.instagram.com/haarmonie_by_cynthia';
 
   return (
     <Tabs
@@ -48,7 +50,7 @@ export default function TabLayout() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 14,
+                  gap: 10,
                   opacity: focused ? 1 : 0.75,
                   width: '100%',
                 }}
@@ -58,8 +60,8 @@ export default function TabLayout() {
                   style={{
                     backgroundColor: '#fff',
                     borderRadius: 999,
-                    width: 55,
-                    height: 55,
+                    width: 50,
+                    height: 50,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
@@ -74,8 +76,8 @@ export default function TabLayout() {
                   style={{
                     backgroundColor: '#fff',
                     borderRadius: 999,
-                    width: 55,
-                    height: 55,
+                    width: 50,
+                    height: 50,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
@@ -94,8 +96,8 @@ export default function TabLayout() {
                   style={{
                     backgroundColor: '#fff',
                     borderRadius: 999,
-                    width: 55,
-                    height: 55,
+                    width: 50,
+                    height: 50,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
@@ -105,13 +107,46 @@ export default function TabLayout() {
                 >
                   <Ionicons name="mail-outline" size={22} color="#2f2415" />
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(FACEBOOK_URL).catch(() => {})}
+                  style={{
+                    backgroundColor: '#fff',
+                    borderRadius: 999,
+                    width: 50,
+                    height: 50,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: '#eaded1',
+                  }}
+                  accessibilityLabel="Facebook ?ffnen"
+                >
+                  <FontAwesome5 name="facebook-f" size={22} color="#1877F2" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(INSTAGRAM_URL).catch(() => {})}
+                  style={{
+                    backgroundColor: '#fff',
+                    borderRadius: 999,
+                    width: 50,
+                    height: 50,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: '#eaded1',
+                  }}
+                  accessibilityLabel="Instagram ?ffnen"
+                >
+                  <FontAwesome5 name="instagram" size={22} color="#C13584" />
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => Linking.openURL('https://www.haarmonie-sha.de').catch(() => {})}
                   style={{
                     backgroundColor: '#fff',
                     borderRadius: 999,
-                    width: 55,
-                    height: 55,
+                    width: 50,
+                    height: 50,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
