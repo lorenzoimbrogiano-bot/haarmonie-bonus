@@ -1,0 +1,7 @@
+﻿.git
+.github
+.expo
+.expo-shared
+node_modules
+**/node_modules
+tools/gitleaks
