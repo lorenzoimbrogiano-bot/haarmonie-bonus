@@ -49,6 +49,7 @@ import DateTimePicker, {
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
@@ -172,6 +173,8 @@ export default function BonusApp() {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
 
   // Login/Registrierung
   const [email, setEmail] = useState("");
@@ -319,6 +322,15 @@ useEffect(() => {
     if (!mail) return false;
     return ALLOWED_ADMINS.includes(mail.toLowerCase());
   };
+
+  const remindEmailVerification = useCallback((targetEmail: string) => {
+    const normalized = targetEmail.trim().toLowerCase();
+    const target = normalized || "deine E-Mail-Adresse";
+    setVerificationEmail(normalized || null);
+    setAuthNotice(
+      `Bitte bestätige deine E-Mail-Adresse. Wir haben dir eine Mail an ${target} geschickt. Prüfe dein Postfach (auch Spam) und tippe danach erneut auf "Einloggen".`
+    );
+  }, []);
 
   // Hilfsfunktion: Geburtsdatum validieren & vereinheitlichen (TT.MM.JJJJ)
   const normalizeBirthDate = (value: string) => {
@@ -527,11 +539,38 @@ useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
-          await loadUserData(user.uid, user.email || "");
-        } else {
-          setFirebaseUser(null);
-          setPoints(0);
-          setVisitHistory([]);
+          if (!user.emailVerified) {
+            const lowerMail = (user.email || "").toLowerCase();
+            let sent = false;
+            if (!verificationEmail || verificationEmail !== lowerMail) {
+              try {
+                await sendEmailVerification(user);
+                sent = true;
+              } catch (err) {
+                console.error("Verifizierungs-Mail konnte nicht gesendet werden:", err);
+                if ((err as any)?.code === "auth/too-many-requests") {
+                  setAuthError(
+                    "Zu viele Verifizierungsversuche. Bitte warte einige Minuten, prüfe dein Postfach und versuche es erneut."
+                  );
+                } else {
+                  setAuthError("Verifizierungs-E-Mail konnte nicht gesendet werden.");
+                }
+              }
+            }
+            if (sent || (verificationEmail && verificationEmail === lowerMail)) {
+              remindEmailVerification(user.email || "");
+            }
+            await signOut(auth);
+            return;
+          }
+
+        setAuthNotice(null);
+        setVerificationEmail(null);
+        await loadUserData(user.uid, user.email || "");
+      } else {
+        setFirebaseUser(null);
+        setPoints(0);
+        setVisitHistory([]);
         }
       } catch (e) {
         console.error("Fehler beim Wiederanmelden:", e);
@@ -541,7 +580,7 @@ useEffect(() => {
     });
 
     return () => unsub();
-  }, [loadUserData]);
+  }, [loadUserData, verificationEmail, remindEmailVerification]);
 
   // -----------------------------------
   // Live-Updates für User-Daten
@@ -759,6 +798,7 @@ useEffect(() => {
   // -----------------------------------
   const handleAuthSubmit = async () => {
     setAuthError(null);
+    setAuthNotice(null);
 
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPassword = password.trim();
@@ -856,11 +896,6 @@ useEffect(() => {
           createdAt: serverTimestamp(),
         });
 
-        await loadUserData(uid, trimmedEmail, {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          dateOfBirth: normalizedBirthDate,
-        });
         setIsRegisterMode(false); // nach Registrierung zurück auf Login-Ansicht
       } else {
         // ---------- EINLOGGEN ----------
@@ -869,6 +904,14 @@ useEffect(() => {
           trimmedEmail,
           trimmedPassword
         );
+
+        if (!cred.user.emailVerified) {
+          setAuthError("Bitte bestätige zuerst deine E-Mail-Adresse.");
+          return;
+        }
+
+        setAuthNotice(null);
+        setVerificationEmail(null);
         await loadUserData(cred.user.uid, trimmedEmail);
       }
 
@@ -885,6 +928,8 @@ useEffect(() => {
         setAuthError("Das Passwort ist zu schwach (mind. 6 Zeichen).");
       } else if (err.code === "auth/email-already-in-use") {
         setAuthError("Für diese E-Mail existiert bereits ein Konto.");
+      } else if (err.code === "auth/too-many-requests") {
+        setAuthError("Zu viele Anfragen. Bitte warte kurz und versuche es erneut.");
       } else {
         setAuthError("Es ist ein Fehler aufgetreten. Bitte später erneut versuchen.");
       }
@@ -922,6 +967,9 @@ useEffect(() => {
     try {
       await signOut(auth);
       setFirebaseUser(null);
+      setAuthNotice(null);
+      setVerificationEmail(null);
+      setAuthError(null);
       setPoints(0);
       setVisitHistory([]);
       setRewardClaims({});
@@ -2025,17 +2073,23 @@ const handleSaveCustomerPoints = async () => {
             <Text style={styles.loginLabel}>Passwort</Text>
             <TextInput
   style={styles.loginInput}
-  value={password}
-  onChangeText={setPassword}
-  placeholder="Passwort"
-  secureTextEntry
-  autoCapitalize="none"
-  autoCorrect={false}
-  textContentType="password"
-  importantForAutofill="yes"
-  autoComplete="password"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Passwort"
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="password"
+          importantForAutofill="yes"
+          autoComplete="password"
 />
           </View>
+
+          {authNotice ? (
+            <View style={styles.loginNoticeBox}>
+              <Text style={styles.loginNotice}>{authNotice}</Text>
+            </View>
+          ) : null}
 
           {authError && (
             <Text style={styles.loginError}>{authError}</Text>
@@ -2069,6 +2123,8 @@ const handleSaveCustomerPoints = async () => {
             onPress={() => {
               setIsRegisterMode((m) => !m);
               setAuthError(null);
+              setAuthNotice(null);
+              setVerificationEmail(null);
             }}
           >
             <Text style={styles.loginLink}>
@@ -3150,6 +3206,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: "#fff",
     fontSize: 14,
+  },
+  loginNoticeBox: {
+    backgroundColor: "#e8f2e9",
+    borderWidth: 1,
+    borderColor: "#9cc39f",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  loginNotice: {
+    color: "#1f412f",
+    fontSize: 13,
   },
   loginError: {
     marginTop: 4,
