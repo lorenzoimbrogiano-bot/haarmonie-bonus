@@ -1218,6 +1218,14 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       return;
     }
     if (!Device.isDevice) return;
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ??
+      Constants?.easConfig?.projectId ??
+      null;
+    if (!projectId) {
+      console.warn("Push-Token konnte nicht geholt werden, projectId fehlt (EAS).");
+      return;
+    }
     const Notifications = await import("expo-notifications");
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -1229,7 +1237,7 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       console.warn("Push-Berechtigung verweigert");
       return;
     }
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenData.data;
 
     const userRef = doc(db, "users", uid);
