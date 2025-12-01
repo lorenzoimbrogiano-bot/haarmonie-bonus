@@ -45,3 +45,6 @@ app-example
 
 # local tools
 tools/gitleaks/
+
+# firebase config
+google-services.json

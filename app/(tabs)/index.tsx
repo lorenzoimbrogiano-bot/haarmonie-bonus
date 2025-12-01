@@ -1213,19 +1213,7 @@ useEffect(() => {
 
 const registerForPushNotificationsAsync = async (uid: string) => {
   try {
-    if (Constants.appOwnership === "expo") {
-      console.warn("Push-Token wird in Expo Go übersprungen (nur Dev Build).");
-      return;
-    }
     if (!Device.isDevice) return;
-    const projectId =
-      Constants?.expoConfig?.extra?.eas?.projectId ??
-      Constants?.easConfig?.projectId ??
-      null;
-    if (!projectId) {
-      console.warn("Push-Token konnte nicht geholt werden, projectId fehlt (EAS).");
-      return;
-    }
     const Notifications = await import("expo-notifications");
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -1237,8 +1225,18 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       console.warn("Push-Berechtigung verweigert");
       return;
     }
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-    const token = tokenData.data;
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ??
+      Constants?.easConfig?.projectId ??
+      null;
+    const tokenData = await Notifications.getDevicePushTokenAsync(
+      projectId ? { projectId } : undefined
+    );
+    const token = tokenData?.data;
+    if (!token) {
+      console.warn("FCM-Token konnte nicht geholt werden (getDevicePushTokenAsync).");
+      return;
+    }
 
     const userRef = doc(db, "users", uid);
     const pushRef = collection(userRef, "pushTokens");
@@ -1247,6 +1245,7 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       deviceName: Device.deviceName || "",
       createdAt: serverTimestamp(),
       platform: Platform.OS,
+      provider: "fcm",
     });
   } catch (e) {
     console.warn("Push-Token konnte nicht gespeichert werden / nicht unterstützt:", e);

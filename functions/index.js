@@ -18,19 +18,68 @@ if (!admin.apps.length) {
   }
 }
 
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const BIRTHDAY_PUSH_TITLE = "Happy Birthday! 🎁";
 const BIRTHDAY_PUSH_BODY =
   "Alles Gute zum Geburtstag! Dein 5€ Gutschein wartet bei uns im Salon.";
 const TRIGGER_PASSWORD =
   process.env.BIRTHDAY_TRIGGER_PASSWORD || "";
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
+const messaging = admin.messaging();
 
 const chunk = (arr, size) =>
   arr.reduce((acc, _, i) => {
     if (i % size === 0) acc.push(arr.slice(i, i + size));
     return acc;
   }, []);
+
+const sanitizeDataStrings = (data) => {
+  if (!data || typeof data !== "object") return undefined;
+  return Object.entries(data).reduce((acc, [k, v]) => {
+    if (v === undefined || v === null) return acc;
+    acc[k] = String(v);
+    return acc;
+  }, {});
+};
+
+async function sendFcmMulticast(tokens, { title, body, data }) {
+  const validTokens = tokens.filter(
+    (t) => typeof t === "string" && t.trim() && !t.startsWith("ExponentPushToken")
+  );
+
+  if (validTokens.length === 0) {
+    return {
+      requested: tokens.length,
+      valid: 0,
+      success: 0,
+      failure: tokens.length,
+      responses: [],
+    };
+  }
+
+  let success = 0;
+  let failure = 0;
+  const responses = [];
+  const payloadData = sanitizeDataStrings(data);
+
+  for (const batch of chunk(validTokens, 500)) {
+    const res = await messaging.sendEachForMulticast({
+      tokens: batch,
+      notification: { title, body },
+      data: payloadData,
+    });
+    success += res.successCount;
+    failure += res.failureCount;
+    responses.push(res);
+  }
+
+  return {
+    requested: tokens.length,
+    valid: validTokens.length,
+    success,
+    failure,
+    responses,
+  };
+}
 
 async function sendBirthdayCoupons(forDate = new Date(), { dryRun = false } = {}) {
   const year = forDate.getFullYear();
@@ -68,37 +117,18 @@ async function sendBirthdayCoupons(forDate = new Date(), { dryRun = false } = {}
       continue;
     }
 
-    const messages = tokens.map((token) => ({
-      to: token,
-      title: BIRTHDAY_PUSH_TITLE,
-      body: BIRTHDAY_PUSH_BODY,
-      data: {
-        type: "birthday-gift",
-        amount: "5",
-        currency: "EUR",
-        userId: docSnap.id,
-      },
-    }));
-
     if (!dryRun) {
-      for (const messageBatch of chunk(messages, 90)) {
-        const response = await fetch(EXPO_PUSH_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(messageBatch),
-        });
-
-        if (!response.ok) {
-          logger.error(
-            "birthdayCouponPush: Expo Push Fehler",
-            response.status,
-            await response.text()
-          );
-          continue;
-        }
-        sent += messageBatch.length;
-      }
-
+      const result = await sendFcmMulticast(tokens, {
+        title: BIRTHDAY_PUSH_TITLE,
+        body: BIRTHDAY_PUSH_BODY,
+        data: {
+          type: "birthday-gift",
+          amount: "5",
+          currency: "EUR",
+          userId: docSnap.id,
+        },
+      });
+      sent += result.success;
       await docSnap.ref.update({
         lastBirthdayGiftYear: year,
         lastBirthdayGiftSentAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -277,22 +307,13 @@ exports.sendPushHttp = onRequest(
         return res.json({ sent: 0, tokens: [] });
       }
 
-      const messages = tokens.map((token) => ({
-        to: token,
-        title,
-        body,
-      }));
-
-      const response = await fetch(EXPO_PUSH_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(messages),
+      const result = await sendFcmMulticast(tokens, { title, body });
+      return res.json({
+        requested: tokens.length,
+        sent: result.success,
+        failed: result.failure,
+        valid: result.valid,
       });
-
-      const data = await response.json();
-      return res.json({ sent: tokens.length, expoResponse: data });
     } catch (e) {
       logger.error("sendPushHttp failed:", e);
       return res.status(500).json({ error: "Push send failed" });
