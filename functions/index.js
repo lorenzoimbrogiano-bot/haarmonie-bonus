@@ -26,6 +26,12 @@ const TRIGGER_PASSWORD =
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
 const messaging = admin.messaging();
 
+const INVALID_FCM_ERRORS = new Set([
+  "messaging/invalid-registration-token",
+  "messaging/registration-token-not-registered",
+  "messaging/mismatched-credential",
+]);
+
 const chunk = (arr, size) =>
   arr.reduce((acc, _, i) => {
     if (i % size === 0) acc.push(arr.slice(i, i + size));
@@ -58,7 +64,7 @@ async function sendFcmMulticast(tokens, { title, body, data }) {
 
   let success = 0;
   let failure = 0;
-  const responses = [];
+  const perTokenResponses = [];
   const payloadData = sanitizeDataStrings(data);
 
   for (const batch of chunk(validTokens, 500)) {
@@ -69,7 +75,13 @@ async function sendFcmMulticast(tokens, { title, body, data }) {
     });
     success += res.successCount;
     failure += res.failureCount;
-    responses.push(res);
+    res.responses.forEach((resp, idx) => {
+      perTokenResponses.push({
+        token: batch[idx],
+        success: resp.success,
+        errorCode: resp.error?.code,
+      });
+    });
   }
 
   return {
@@ -77,8 +89,35 @@ async function sendFcmMulticast(tokens, { title, body, data }) {
     valid: validTokens.length,
     success,
     failure,
-    responses,
+    responses: perTokenResponses,
   };
+}
+
+async function cleanupInvalidTokens(tokenDocs, responses) {
+  if (!Array.isArray(tokenDocs) || tokenDocs.length === 0) return 0;
+  if (!Array.isArray(responses) || responses.length === 0) return 0;
+
+  const refByToken = tokenDocs.reduce((acc, snap) => {
+    acc[snap.id] = snap.ref;
+    return acc;
+  }, {});
+
+  const invalidRefs = responses
+    .filter((r) => !r.success && INVALID_FCM_ERRORS.has(r.errorCode))
+    .map((r) => refByToken[r.token])
+    .filter(Boolean);
+
+  if (invalidRefs.length === 0) return 0;
+
+  await Promise.all(
+    invalidRefs.map((ref) =>
+      ref.delete().catch((err) => {
+        logger.warn("Failed to delete invalid push token", err);
+      })
+    )
+  );
+
+  return invalidRefs.length;
 }
 
 async function sendBirthdayCoupons(forDate = new Date(), { dryRun = false } = {}) {
@@ -110,7 +149,8 @@ async function sendBirthdayCoupons(forDate = new Date(), { dryRun = false } = {}
     }
 
     const tokensSnap = await docSnap.ref.collection("pushTokens").get();
-    const tokens = tokensSnap.docs.map((d) => d.id).filter(Boolean);
+    const tokenDocs = tokensSnap.docs;
+    const tokens = tokenDocs.map((d) => d.id).filter(Boolean);
 
     if (tokens.length === 0) {
       withoutTokens += 1;
@@ -129,6 +169,10 @@ async function sendBirthdayCoupons(forDate = new Date(), { dryRun = false } = {}
         },
       });
       sent += result.success;
+      const cleaned = await cleanupInvalidTokens(tokenDocs, result.responses);
+      if (cleaned > 0) {
+        logger.info(`Cleaned ${cleaned} invalid push tokens for user ${docSnap.id}`);
+      }
       await docSnap.ref.update({
         lastBirthdayGiftYear: year,
         lastBirthdayGiftSentAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -281,38 +325,39 @@ exports.sendPushHttp = onRequest(
       return res.status(500).send("Admin secret not configured");
     }
 
-    const { title, body, target = "all", userId, password } = req.body || {};
-    if (!password || password !== ADMIN_SECRET) {
-      return res.status(403).json({ error: "forbidden" });
-    }
-    if (!title || !body) {
-      return res.status(400).json({ error: "title and body are required" });
+    const { title, body, target = "all", userId } = req.body || {};
+    const safeTitle = (title && String(title)) || "Haarmonie";
+    const safeBody = body && String(body);
+    if (!safeBody) {
+      return res.status(400).json({ error: "body is required" });
     }
 
     try {
-      let tokenDocs;
+      let tokenSnap;
       if (target === "selected" && userId) {
-        tokenDocs = await admin
+        tokenSnap = await admin
           .firestore()
           .collection("users")
           .doc(userId)
           .collection("pushTokens")
           .get();
       } else {
-        tokenDocs = await admin.firestore().collectionGroup("pushTokens").get();
+        tokenSnap = await admin.firestore().collectionGroup("pushTokens").get();
       }
 
-      const tokens = tokenDocs.docs.map((d) => d.id).filter(Boolean);
+      const tokens = tokenSnap.docs.map((d) => d.id).filter(Boolean);
       if (tokens.length === 0) {
         return res.json({ sent: 0, tokens: [] });
       }
 
-      const result = await sendFcmMulticast(tokens, { title, body });
+      const result = await sendFcmMulticast(tokens, { title: safeTitle, body: safeBody });
+      const cleaned = await cleanupInvalidTokens(tokenSnap.docs, result.responses);
       return res.json({
         requested: tokens.length,
         sent: result.success,
         failed: result.failure,
         valid: result.valid,
+        invalidTokensDeleted: cleaned,
       });
     } catch (e) {
       logger.error("sendPushHttp failed:", e);

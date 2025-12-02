@@ -16,18 +16,12 @@ const CLOUD_FUNCTION_PUSH_URL =
 
 export default function ManagePushScreen() {
   const router = useRouter();
-  const [pushTitle, setPushTitle] = useState("");
   const [pushBody, setPushBody] = useState("");
-  const [pushPassword, setPushPassword] = useState("");
   const [pushBusy, setPushBusy] = useState(false);
 
   const handleSendPush = async () => {
-    if (!pushTitle.trim() || !pushBody.trim()) {
-      Alert.alert("Angaben fehlen", "Bitte Titel und Nachricht ausfüllen.");
-      return;
-    }
-    if (!pushPassword.trim()) {
-      Alert.alert("Passwort fehlt", "Bitte Admin-Passwort eingeben.");
+    if (!pushBody.trim()) {
+      Alert.alert("Angaben fehlen", "Bitte Nachricht ausfüllen.");
       return;
     }
     if (!CLOUD_FUNCTION_PUSH_URL.startsWith("https://")) {
@@ -41,10 +35,10 @@ export default function ManagePushScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: pushTitle.trim(),
+          // Wir nutzen einen Standard-Titel, nur das Nachrichten-Feld wird eingegeben.
+          title: "Haarmonie",
           body: pushBody.trim(),
           target: "all",
-          password: pushPassword.trim(),
         }),
       });
       if (!resp.ok) {
@@ -52,8 +46,6 @@ export default function ManagePushScreen() {
       }
       Alert.alert("Gesendet", "Push-Nachricht wurde ausgelöst.");
       setPushBody("");
-      setPushTitle("");
-      setPushPassword("");
     } catch (err) {
       console.error("Push senden fehlgeschlagen:", err);
       Alert.alert(
@@ -85,14 +77,6 @@ export default function ManagePushScreen() {
           Versende Push-Nachrichten an alle Kunden.
         </Text>
 
-        <Text style={styles.label}>Titel</Text>
-        <TextInput
-          style={styles.input}
-          value={pushTitle}
-          onChangeText={setPushTitle}
-          placeholder="Titel"
-        />
-
         <Text style={styles.label}>Nachricht</Text>
         <TextInput
           style={[styles.input, { height: 90 }]}
@@ -102,18 +86,9 @@ export default function ManagePushScreen() {
           multiline
         />
 
-        <Text style={styles.label}>Admin-Passwort</Text>
-        <TextInput
-          style={styles.input}
-          value={pushPassword}
-          onChangeText={setPushPassword}
-          placeholder="Admin-Passwort"
-          secureTextEntry
-        />
-
         <Text style={[styles.label, { marginTop: 14 }]}>Hinweis</Text>
         <Text style={styles.subtitle}>
-          Pushs werden immer an alle vorhandenen Push-Tokens versendet.
+          Pushs werden an alle vorhandenen Push-Tokens versendet.
         </Text>
 
         <TouchableOpacity
