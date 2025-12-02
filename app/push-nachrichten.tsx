@@ -36,7 +36,7 @@ export default function ManagePushScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // Wir nutzen einen Standard-Titel, nur das Nachrichten-Feld wird eingegeben.
-          title: "Haarmonie",
+          title: "Haarmonie by Cynthia",
           body: pushBody.trim(),
           target: "all",
         }),

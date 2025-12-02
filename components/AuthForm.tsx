@@ -135,12 +135,12 @@ export default function AuthForm({
               </View>
 
               <View style={styles.loginField}>
-                <Text style={styles.loginLabel}>Stra\u00dfe*</Text>
+                <Text style={styles.loginLabel}>Straße*</Text>
                 <TextInput
                   style={styles.loginInput}
                   value={street}
                   onChangeText={setStreet}
-                  placeholder="z. B. Musterstra\u00dfe 12"
+                  placeholder="z. B. Musterstraße 12"
                   autoCapitalize="words"
                   autoCorrect={false}
                   textContentType="streetAddressLine1"
@@ -171,7 +171,7 @@ export default function AuthForm({
                     style={styles.loginInput}
                     value={city}
                     onChangeText={setCity}
-                    placeholder="z. B. Schw\u00e4bisch Hall"
+                    placeholder="z. B. Schwäbisch Hall"
                     autoCapitalize="words"
                     autoCorrect={false}
                     importantForAutofill="yes"

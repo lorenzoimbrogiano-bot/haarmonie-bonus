@@ -326,7 +326,7 @@ exports.sendPushHttp = onRequest(
     }
 
     const { title, body, target = "all", userId } = req.body || {};
-    const safeTitle = (title && String(title)) || "Haarmonie";
+    const safeTitle = (title && String(title)) || "Haarmonie by Cynthia";
     const safeBody = body && String(body);
     if (!safeBody) {
       return res.status(400).json({ error: "body is required" });
