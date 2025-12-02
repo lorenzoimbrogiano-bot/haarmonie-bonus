@@ -3307,6 +3307,14 @@ const styles = StyleSheet.create({
     elevation: 2,
     position: "relative",
   },
+  pushInfoShimmer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 160,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    borderRadius: 14,
+  },
   pushInfoTitle: {
     fontSize: 15,
     fontWeight: "700",

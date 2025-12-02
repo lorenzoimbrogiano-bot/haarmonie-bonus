@@ -1,5 +1,12 @@
-import React from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { BirthdayVoucherCard } from "./BirthdayVoucherCard";
 
 type Props = {
@@ -47,6 +54,31 @@ export default function CustomerHome({
   pushInfo,
   onClearPushInfo,
 }: Props) {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const shimmerWidth = 160;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmerAnim]);
+
+  const shimmerTranslate = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-200, 280],
+  });
   const formattedDate =
     pushInfo?.timestamp !== undefined && pushInfo.timestamp
       ? new Date(pushInfo.timestamp).toLocaleDateString()
@@ -57,6 +89,13 @@ export default function CustomerHome({
       {pushInfo ? (
         <View style={styles.section}>
           <View style={styles.pushInfoCard}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.pushInfoShimmer,
+                { transform: [{ translateX: shimmerTranslate }] },
+              ]}
+            />
             <Text style={styles.pushInfoTitle}>
               {pushInfo.title || "Neue Push-Nachricht"}
             </Text>
