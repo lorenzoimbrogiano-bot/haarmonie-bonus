@@ -102,7 +102,9 @@ export default function CustomerHome({
         onBookPress={onBirthdayBook}
       />
 
-      <View style={styles.section}>
+      <View style={styles.pointsCardWrapper}>
+        <View style={styles.pointsCardGlow} />
+        <View style={[styles.pointsCard, styles.pointsCardGradient]}>
         <Text style={styles.sectionTitle}>Prämien-Aktionen</Text>
         {rewardActionsLoading && visibleRewardActions.length === 0 ? (
           <ActivityIndicator style={{ marginTop: 8 }} />
@@ -223,6 +225,7 @@ export default function CustomerHome({
             );
           })
         )}
+        </View>
       </View>
 
       <View style={styles.section}>

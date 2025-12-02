@@ -2158,7 +2158,9 @@ const handleSaveCustomerPoints = async () => {
   const sortedRewardActions = [...rewardActions].sort(
     (a, b) => (a.order ?? 9999) - (b.order ?? 9999)
   );
-  const visibleRewardActions = sortedRewardActions.filter(isActionActiveForNow);
+  const visibleRewardActions = sortedRewardActions.filter(
+    (action) => isActionActiveForNow(action) && rewardClaims[action.id] !== true
+  );
   const hasPendingRewardClaims = sortedRewardActions.some(
     (action) => selectedCustomerRewardClaims[action.id] === "pending"
   );
