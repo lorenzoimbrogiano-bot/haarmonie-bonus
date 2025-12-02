@@ -102,5 +102,11 @@ service cloud.firestore {
       // Lesen: nur Admin
       allow read, update, delete: if isAdmin();
     }
+
+    // Sammlung: Push-Meldungen (nur lesen f�r eingeloggte User)
+    match /pushMessages/{msgId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
   }
 }

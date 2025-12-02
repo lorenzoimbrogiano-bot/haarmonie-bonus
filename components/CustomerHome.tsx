@@ -21,6 +21,8 @@ type Props = {
   setShowAllVisits: (value: boolean) => void;
   onOpenFeedback: () => void;
   feedbackSent: boolean;
+  pushInfo?: { title?: string; body?: string; timestamp?: number } | null;
+  onClearPushInfo?: () => void;
 };
 
 export default function CustomerHome({
@@ -42,9 +44,39 @@ export default function CustomerHome({
   setShowAllVisits,
   onOpenFeedback,
   feedbackSent,
+  pushInfo,
+  onClearPushInfo,
 }: Props) {
+  const formattedDate =
+    pushInfo?.timestamp !== undefined && pushInfo.timestamp
+      ? new Date(pushInfo.timestamp).toLocaleDateString()
+      : "";
+
   return (
     <>
+      {pushInfo ? (
+        <View style={styles.section}>
+          <View style={styles.pushInfoCard}>
+            <Text style={styles.pushInfoTitle}>
+              {pushInfo.title || "Neue Push-Nachricht"}
+            </Text>
+            {pushInfo.body ? (
+              <Text style={styles.pushInfoBody}>{pushInfo.body}</Text>
+            ) : null}
+            {formattedDate ? <Text style={styles.pushInfoTime}>{formattedDate}</Text> : null}
+            {onClearPushInfo ? (
+              <TouchableOpacity
+                style={styles.pushInfoCloseButton}
+                onPress={onClearPushInfo}
+                accessibilityLabel="Push-Nachricht ausblenden"
+              >
+                <Text style={styles.pushInfoCloseText}>×</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
       <View style={styles.pointsCardWrapper}>
         <View style={styles.pointsCardGlow} />
         <View style={[styles.pointsCard, styles.pointsCardGradient]}>

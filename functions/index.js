@@ -352,6 +352,17 @@ exports.sendPushHttp = onRequest(
 
       const result = await sendFcmMulticast(tokens, { title: safeTitle, body: safeBody });
       const cleaned = await cleanupInvalidTokens(tokenSnap.docs, result.responses);
+      try {
+        await admin.firestore().collection("pushMessages").add({
+          title: safeTitle,
+          body: safeBody,
+          target: target === "selected" && userId ? "selected" : "all",
+          userId: target === "selected" && userId ? userId : null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (err) {
+        logger.warn("pushMessages write failed", err);
+      }
       return res.json({
         requested: tokens.length,
         sent: result.success,

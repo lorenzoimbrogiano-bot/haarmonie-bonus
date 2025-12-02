@@ -1,9 +1,11 @@
 // app/(tabs)/index.tsx
 
 import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as FileSystem from "expo-file-system/legacy";
+import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import LottieView from "lottie-react-native";
@@ -11,6 +13,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -31,6 +34,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -110,6 +114,9 @@ const DEFAULT_REWARD_ACTIONS: RewardAction[] = [
     order: 3,
   },
 ];
+
+const PUSH_INFO_STORAGE_KEY = "haarmonie:lastPushInfo";
+const PUSH_INFO_TTL_MS = 24 * 60 * 60 * 1000;
 
 type Visit = {
   id: string;
@@ -274,17 +281,196 @@ export default function BonusApp() {
   const [showPushPassword, setShowPushPassword] = useState(false);
   const [showExportPassword, setShowExportPassword] = useState(false);
   const [showCustomerPassword, setShowCustomerPassword] = useState(false);
+  const [pushInfo, setPushInfo] = useState<{
+    title: string;
+    body: string;
+    timestamp: number;
+  } | null>(null);
   const [showAllVisits, setShowAllVisits] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appState = useRef(AppState.currentState);
+  const clearPushInfo = useCallback(async () => {
+    setPushInfo(null);
+    try {
+      await AsyncStorage.removeItem(PUSH_INFO_STORAGE_KEY);
+    } catch (e) {
+      console.warn("PushInfo löschen fehlgeschlagen:", e);
+    }
+  }, []);
+
+  const persistPushInfo = useCallback(
+    async (info: { title: string; body: string; timestamp: number }) => {
+      setPushInfo(info);
+      try {
+        await AsyncStorage.setItem(PUSH_INFO_STORAGE_KEY, JSON.stringify(info));
+      } catch (e) {
+        console.warn("PushInfo speichern fehlgeschlagen:", e);
+      }
+    },
+    []
+  );
+
+  const updatePushInfoFromContent = useCallback(
+    (content: any) => {
+      if (!content) return;
+      const info = {
+        title: content.title || "Haarmonie by Cynthia",
+        body: content.body || "Neue Nachricht",
+        timestamp: Date.now(),
+      };
+      persistPushInfo(info);
+    },
+    [persistPushInfo]
+  );
+
+  const loadServerPushInfo = useCallback(
+    async (uid?: string | null) => {
+      try {
+        const messagesRef = collection(db, "pushMessages");
+        const snap = await getDocs(
+          query(messagesRef, orderBy("createdAt", "desc"), limit(20))
+        );
+        const now = Date.now();
+        for (const docSnap of snap.docs) {
+          const data = docSnap.data() as any;
+          const ts = data?.createdAt?.toDate?.() ? data.createdAt.toDate().getTime() : 0;
+          if (!ts || now - ts > PUSH_INFO_TTL_MS) continue;
+          const target = data?.target || "all";
+          const matchesTarget =
+            target === "all" || (target === "selected" && uid && data?.userId === uid);
+          if (!matchesTarget) continue;
+          persistPushInfo({
+            title: data?.title || "Haarmonie by Cynthia",
+            body: data?.body || "Neue Nachricht",
+            timestamp: ts,
+          });
+          break;
+        }
+      } catch (e) {
+        console.warn("Server PushInfo laden fehlgeschlagen:", e);
+      }
+    },
+    [persistPushInfo]
+  );
+
+  useEffect(() => {
+    if (!firebaseUser?.uid) return undefined;
+    const messagesRef = collection(db, "pushMessages");
+    const q = query(messagesRef, orderBy("createdAt", "desc"), limit(20));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const now = Date.now();
+        for (const docSnap of snap.docs) {
+          const data = docSnap.data() as any;
+          const ts = data?.createdAt?.toDate?.() ? data.createdAt.toDate().getTime() : 0;
+          if (!ts || now - ts > PUSH_INFO_TTL_MS) continue;
+          const target = data?.target || "all";
+          const matchesTarget =
+            target === "all" ||
+            (target === "selected" && firebaseUser?.uid && data?.userId === firebaseUser.uid);
+          if (!matchesTarget) continue;
+          persistPushInfo({
+            title: data?.title || "Haarmonie by Cynthia",
+            body: data?.body || "Neue Nachricht",
+            timestamp: ts,
+          });
+          break;
+        }
+      },
+      (err) => console.warn("PushInfo Snapshot Fehler:", err)
+    );
+    return () => unsub();
+  }, [firebaseUser?.uid, persistPushInfo]);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowIntro(false), 3200);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(PUSH_INFO_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        const ts = typeof parsed?.timestamp === "number" ? parsed.timestamp : 0;
+        if (!ts || Date.now() - ts >= PUSH_INFO_TTL_MS) {
+          await clearPushInfo();
+          return;
+        }
+        setPushInfo({
+          title: parsed?.title || "Haarmonie by Cynthia",
+          body: parsed?.body || "",
+          timestamp: ts,
+        });
+      } catch (e) {
+        console.warn("PushInfo laden fehlgeschlagen:", e);
+      }
+    })();
+  }, [clearPushInfo]);
+
+  useEffect(() => {
+    const handleNotification = (notification: any) => {
+      const content = notification?.request?.content;
+      updatePushInfoFromContent(content);
+    };
+
+    const checkLastNotification = async () => {
+      try {
+        const lastResponse = await Notifications.getLastNotificationResponseAsync();
+        if (lastResponse?.notification?.request?.content) {
+          updatePushInfoFromContent(lastResponse.notification.request.content);
+          return;
+        }
+        const presented = await Notifications.getPresentedNotificationsAsync();
+        if (presented && presented.length > 0) {
+          const latest = presented[0];
+          updatePushInfoFromContent(latest?.request?.content);
+        }
+      } catch (e) {
+        console.warn("Letzte Notification abrufen fehlgeschlagen:", e);
+      }
+    };
+
+    checkLastNotification();
+
+    const receivedSub = Notifications.addNotificationReceivedListener(handleNotification);
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) =>
+      handleNotification(response.notification)
+    );
+
+    const appStateListener = AppState.addEventListener("change", (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === "active") {
+        checkLastNotification();
+      }
+      appState.current = nextState;
+    });
+
+    return () => {
+      receivedSub?.remove();
+      responseSub?.remove();
+      appStateListener?.remove();
+    };
+  }, [updatePushInfoFromContent]);
+
+  useEffect(() => {
+    if (!pushInfo) return undefined;
+    const age = Date.now() - pushInfo.timestamp;
+    const remaining = PUSH_INFO_TTL_MS - age;
+    if (remaining <= 0) {
+      clearPushInfo();
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      clearPushInfo();
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [pushInfo, clearPushInfo]);
 
 useEffect(() => {
   if (selectedCustomer) {
@@ -1224,7 +1410,6 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       console.warn("Push wird in Expo Go nicht unterstützt. Bitte Dev-Build nutzen.");
       return;
     }
-    const Notifications = await import("expo-notifications");
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== "granted") {
@@ -1267,6 +1452,11 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       registerForPushNotificationsAsync(firebaseUser.uid);
     }
   }, [firebaseUser?.uid]);
+  useEffect(() => {
+    if (firebaseUser?.uid) {
+      loadServerPushInfo(firebaseUser.uid);
+    }
+  }, [firebaseUser?.uid, loadServerPushInfo]);
 
   const seedDefaultRewardActions = async (actionsRef: any) => {
     const now = new Date().toISOString();
@@ -2147,6 +2337,8 @@ const renderRedemptionRow = (r: RewardRedemption) => {
             setShowAllVisits={setShowAllVisits}
             onOpenFeedback={() => setShowFeedbackModal(true)}
             feedbackSent={feedbackSent}
+            pushInfo={pushInfo}
+            onClearPushInfo={clearPushInfo}
           />
         )}
 
@@ -3099,6 +3291,56 @@ const styles = StyleSheet.create({
   loginNotice: {
     color: "#1f412f",
     fontSize: 13,
+  },
+  pushInfoCard: {
+    backgroundColor: "#fff4d6",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#f3d9a6",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    position: "relative",
+  },
+  pushInfoTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#a05b00",
+    marginBottom: 4,
+  },
+  pushInfoBody: {
+    fontSize: 13,
+    color: "#5c4632",
+    marginBottom: 6,
+  },
+  pushInfoTime: {
+    fontSize: 12,
+    color: "#7a644a",
+    marginBottom: 8,
+  },
+  pushInfoCloseButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#c49a6c",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "transparent",
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
+  },
+  pushInfoCloseText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
   loginError: {
     marginTop: 4,
