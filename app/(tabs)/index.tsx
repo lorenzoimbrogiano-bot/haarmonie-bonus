@@ -1403,9 +1403,9 @@ useEffect(() => {
 const registerForPushNotificationsAsync = async (uid: string) => {
   try {
     if (!Device.isDevice) return;
-    const isExpoGo =
+  const isExpoGo =
       Constants.appOwnership === "expo" ||
-      Constants.executionEnvironment === "expo-go";
+      Constants.executionEnvironment === "storeClient";
     if (isExpoGo) {
       console.warn("Push wird in Expo Go nicht unterstützt. Bitte Dev-Build nutzen.");
       return;
@@ -1424,9 +1424,7 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       Constants?.expoConfig?.extra?.eas?.projectId ??
       Constants?.easConfig?.projectId ??
       null;
-    const tokenData = await Notifications.getDevicePushTokenAsync(
-      projectId ? { projectId } : undefined
-    );
+  const tokenData = await Notifications.getDevicePushTokenAsync();
     const token = tokenData?.data;
     if (!token) {
       console.warn("FCM-Token konnte nicht geholt werden (getDevicePushTokenAsync).");

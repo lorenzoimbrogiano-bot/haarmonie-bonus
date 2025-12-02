@@ -7,10 +7,11 @@ import {
   query,
   serverTimestamp,
 } from "firebase/firestore";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Modal,
   ScrollView,
   StyleSheet,
@@ -71,6 +72,7 @@ export default function RewardsScreen() {
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [rewardsLoading, setRewardsLoading] = useState(true);
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const rewardsRef = collection(db, "rewards");
@@ -110,6 +112,25 @@ export default function RewardsScreen() {
 
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmerAnim]);
 
   const availableRewards = useMemo(() => {
     const base = rewards.length > 0 ? rewards : DEFAULT_REWARDS;
@@ -222,7 +243,24 @@ export default function RewardsScreen() {
                   styles.progressFill,
                   { width: `${Math.round(progressRatio * 100)}%` },
                 ]}
-              />
+              >
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.progressShimmer,
+                    {
+                      transform: [
+                        {
+                          translateX: shimmerAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-120, 240],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                />
+              </View>
             </View>
             <Text style={styles.progressHint}>
               {nextReward && hasPoints
@@ -515,6 +553,15 @@ const styles = StyleSheet.create({
   progressFill: {
     height: "100%",
     backgroundColor: "#c49a6c",
+    borderRadius: 999,
+    position: "relative",
+  },
+  progressShimmer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 120,
+    backgroundColor: "rgba(255,255,255,0.28)",
     borderRadius: 999,
   },
   progressHint: {
