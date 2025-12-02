@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -78,6 +78,8 @@ export default function AuthForm({
   keyboardOffset,
 }: AuthFormProps) {
   const logo = require("../assets/logo.png");
+  const [showPassword, setShowPassword] = useState(false);
+  const inputHighlight = "#c49a6c";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -241,34 +243,47 @@ export default function AuthForm({
 
           <View style={styles.loginField}>
             <Text style={styles.loginLabel}>E-Mail</Text>
-            <TextInput
-              style={styles.loginInput}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Deine E-Mail-Adresse"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="emailAddress"
-              importantForAutofill="yes"
-              autoComplete="email"
-            />
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.inputField}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Deine E-Mail-Adresse"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="emailAddress"
+                importantForAutofill="yes"
+                autoComplete="email"
+                selectionColor={inputHighlight}
+                cursorColor={inputHighlight}
+              />
+            </View>
           </View>
 
           <View style={styles.loginField}>
             <Text style={styles.loginLabel}>Passwort</Text>
-            <TextInput
-              style={styles.loginInput}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Passwort"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="password"
-              importantForAutofill="yes"
-              autoComplete="password"
-            />
+            <View style={styles.passwordInputWrapper}>
+              <TextInput
+                style={styles.passwordInputField}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Passwort"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                importantForAutofill="yes"
+                autoComplete="password"
+                selectionColor={inputHighlight}
+                cursorColor={inputHighlight}
+              />
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)}>
+                <Text style={styles.passwordToggle}>
+                  {showPassword ? "Verbergen" : "Anzeigen"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {authNotice ? (

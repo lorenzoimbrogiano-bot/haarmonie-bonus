@@ -271,6 +271,9 @@ export default function BonusApp() {
   const [showPushPasswordModal, setShowPushPasswordModal] = useState(false);
   const [pushPasswordInput, setPushPasswordInput] = useState("");
   const [pushPasswordError, setPushPasswordError] = useState("");
+  const [showPushPassword, setShowPushPassword] = useState(false);
+  const [showExportPassword, setShowExportPassword] = useState(false);
+  const [showCustomerPassword, setShowCustomerPassword] = useState(false);
   const [showAllVisits, setShowAllVisits] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
@@ -1287,6 +1290,7 @@ const registerForPushNotificationsAsync = async (uid: string) => {
   const handleOpenPushNavigation = () => {
     setPushPasswordError("");
     setPushPasswordInput("");
+    setShowPushPassword(false);
     setShowPushPasswordModal(true);
   };
 
@@ -1295,6 +1299,7 @@ const registerForPushNotificationsAsync = async (uid: string) => {
       await verifyAdminPassword(pushPasswordInput);
       setPushPasswordError("");
       setPushPasswordInput("");
+      setShowPushPassword(false);
       setShowPushPasswordModal(false);
       router.push("/push-nachrichten");
     } catch (e) {
@@ -2209,6 +2214,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
               disabled={exportBusy}
               onPress={() => {
                 setExportPasswordError("");
+                setShowExportPassword(false);
                 setShowExportPasswordModal(true);
               }}
             >
@@ -2565,6 +2571,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                             if (!customerEditUnlocked) {
                               setCustomerPasswordError("");
                               setCustomerPasswordInput("");
+                              setShowCustomerPassword(false);
                               setShowCustomerPasswordModal(true);
                               return;
                             }
@@ -2787,6 +2794,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
           setShowPushPasswordModal(false);
           setPushPasswordError("");
           setPushPasswordInput("");
+          setShowPushPassword(false);
         }}
       >
         <View style={styles.modalBackdrop}>
@@ -2796,15 +2804,22 @@ const renderRedemptionRow = (r: RewardRedemption) => {
               Bitte Admin-Passwort eingeben, um Push-Nachrichten zu verwalten.
             </Text>
 
-            <TextInput
-              style={styles.loginInput}
-              value={pushPasswordInput}
-              onChangeText={setPushPasswordInput}
-              placeholder="Passwort"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={styles.passwordInputWrapper}>
+              <TextInput
+                style={styles.passwordInputField}
+                value={pushPasswordInput}
+                onChangeText={setPushPasswordInput}
+                placeholder="Passwort"
+                secureTextEntry={!showPushPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity onPress={() => setShowPushPassword((v) => !v)}>
+                <Text style={styles.passwordToggle}>
+                  {showPushPassword ? "Verbergen" : "Anzeigen"}
+                </Text>
+              </TouchableOpacity>
+            </View>
             {pushPasswordError ? (
               <Text style={styles.loginError}>{pushPasswordError}</Text>
             ) : null}
@@ -2816,6 +2831,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                   setShowPushPasswordModal(false);
                   setPushPasswordError("");
                   setPushPasswordInput("");
+                  setShowPushPassword(false);
                 }}
               >
                 <Text style={styles.modalCancelText}>Abbrechen</Text>
@@ -2835,7 +2851,10 @@ const renderRedemptionRow = (r: RewardRedemption) => {
         visible={showExportPasswordModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowExportPasswordModal(false)}
+        onRequestClose={() => {
+          setShowExportPasswordModal(false);
+          setShowExportPassword(false);
+        }}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -2844,15 +2863,22 @@ const renderRedemptionRow = (r: RewardRedemption) => {
               Bitte das Mitarbeiter-Passwort eingeben, um den Export zu starten.
             </Text>
 
-            <TextInput
-              style={styles.loginInput}
-              value={exportPasswordInput}
-              onChangeText={setExportPasswordInput}
-              placeholder="Passwort"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={styles.passwordInputWrapper}>
+              <TextInput
+                style={styles.passwordInputField}
+                value={exportPasswordInput}
+                onChangeText={setExportPasswordInput}
+                placeholder="Passwort"
+                secureTextEntry={!showExportPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity onPress={() => setShowExportPassword((v) => !v)}>
+                <Text style={styles.passwordToggle}>
+                  {showExportPassword ? "Verbergen" : "Anzeigen"}
+                </Text>
+              </TouchableOpacity>
+            </View>
             {exportPasswordError ? (
               <Text style={styles.loginError}>{exportPasswordError}</Text>
             ) : null}
@@ -2864,6 +2890,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                   setShowExportPasswordModal(false);
                   setExportPasswordError("");
                   setExportPasswordInput("");
+                  setShowExportPassword(false);
                 }}
               >
                 <Text style={styles.modalCancelText}>Abbrechen</Text>
@@ -2893,6 +2920,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
           setShowCustomerPasswordModal(false);
           setCustomerPasswordError("");
           setCustomerPasswordInput("");
+          setShowCustomerPassword(false);
         }}
       >
         <View style={styles.modalBackdrop}>
@@ -2902,15 +2930,22 @@ const renderRedemptionRow = (r: RewardRedemption) => {
               Bitte Admin-Passwort eingeben, um Kundendaten zu bearbeiten.
             </Text>
 
-            <TextInput
-              style={styles.loginInput}
-              value={customerPasswordInput}
-              onChangeText={setCustomerPasswordInput}
-              placeholder="Passwort"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={styles.passwordInputWrapper}>
+              <TextInput
+                style={styles.passwordInputField}
+                value={customerPasswordInput}
+                onChangeText={setCustomerPasswordInput}
+                placeholder="Passwort"
+                secureTextEntry={!showCustomerPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity onPress={() => setShowCustomerPassword((v) => !v)}>
+                <Text style={styles.passwordToggle}>
+                  {showCustomerPassword ? "Verbergen" : "Anzeigen"}
+                </Text>
+              </TouchableOpacity>
+            </View>
             {customerPasswordError ? (
               <Text style={styles.loginError}>{customerPasswordError}</Text>
             ) : null}
@@ -2922,6 +2957,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                   setShowCustomerPasswordModal(false);
                   setCustomerPasswordError("");
                   setCustomerPasswordInput("");
+                  setShowCustomerPassword(false);
                 }}
               >
                 <Text style={styles.modalCancelText}>Abbrechen</Text>
@@ -2933,6 +2969,7 @@ const renderRedemptionRow = (r: RewardRedemption) => {
                     await verifyAdminPassword(customerPasswordInput);
                     setCustomerPasswordError("");
                     setCustomerPasswordInput("");
+                    setShowCustomerPassword(false);
                     setShowCustomerPasswordModal(false);
                     setCustomerEditUnlocked(true);
                     setCustomerEditExpanded(true);
@@ -3014,6 +3051,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: "#fff",
+    fontSize: 14,
+  },
+  passwordInputWrapper: {
+    borderWidth: 1,
+    borderColor: "#e1d3c5",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  passwordInputField: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  passwordToggle: {
+    color: "#c49a6c",
+    fontWeight: "600",
+    marginLeft: 10,
+    fontSize: 13,
+  },
+  inputWrapper: {
+    borderWidth: 1,
+    borderColor: "#e1d3c5",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    overflow: "hidden",
+  },
+  inputField: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 14,
   },
   loginNoticeBox: {
