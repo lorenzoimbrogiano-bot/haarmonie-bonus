@@ -1214,6 +1214,13 @@ useEffect(() => {
 const registerForPushNotificationsAsync = async (uid: string) => {
   try {
     if (!Device.isDevice) return;
+    const isExpoGo =
+      Constants.appOwnership === "expo" ||
+      Constants.executionEnvironment === "expo-go";
+    if (isExpoGo) {
+      console.warn("Push wird in Expo Go nicht unterstützt. Bitte Dev-Build nutzen.");
+      return;
+    }
     const Notifications = await import("expo-notifications");
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
