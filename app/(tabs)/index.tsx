@@ -42,6 +42,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
@@ -55,6 +56,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  deleteUser,
 } from "firebase/auth";
 
 import AuthForm from "../../components/AuthForm";
@@ -606,11 +608,7 @@ useEffect(() => {
   // Kundendaten (eigener User) laden
   // -----------------------------------
   const loadUserData = useCallback(
-    async (
-      uid: string,
-      fallbackEmail: string,
-      defaults?: { firstName?: string; lastName?: string; dateOfBirth?: string }
-    ) => {
+    async (uid: string, fallbackEmail: string) => {
       const userRef = doc(db, "users", uid);
       const snap = await getDoc(userRef);
 
@@ -634,26 +632,8 @@ useEffect(() => {
         voucherAvailable = voucher.available;
         voucherYear = voucher.year;
       } else {
-      await setDoc(userRef, {
-        email: fallbackEmail,
-        firstName: (defaults?.firstName || "").trim(),
-        lastName: (defaults?.lastName || "").trim(),
-        name: `${(defaults?.firstName || "").trim()} ${(defaults?.lastName || "").trim()}`.trim(),
-        dateOfBirth: (defaults?.dateOfBirth || "").trim(),
-        ...getBirthDayMonth(normalizeBirthDate(defaults?.dateOfBirth || "")),
-        street: "",
-        zip: "",
-        city: "",
-        phone: "",
-        marketingConsent: false,
-          points: 0, // KEIN Bonus hier
-          registrationBonusGranted: false,
-          rewardClaims: {},
-          createdAt: serverTimestamp(),
-        });
-
-        nameFromDb = `${(defaults?.firstName || "").trim()} ${(defaults?.lastName || "").trim()}`.trim();
-        pointsFromDb = 0;
+        console.error("Kein Benutzer-Profil in Firestore gefunden. UID:", uid);
+        throw new Error("USER_PROFILE_MISSING");
       }
       const adminFlag = isEmailAdmin(fallbackEmail);
 
@@ -754,9 +734,17 @@ useEffect(() => {
         setFirebaseUser(null);
         setPoints(0);
         setVisitHistory([]);
-        }
-      } catch (e) {
+      }
+      } catch (e: any) {
         console.error("Fehler beim Wiederanmelden:", e);
+        if (e?.message === "USER_PROFILE_MISSING") {
+          setAuthError(
+            "Dein Profil ist unvollständig. Bitte registriere dich erneut oder melde dich beim Team."
+          );
+          await signOut(auth);
+        } else {
+          setAuthError("Automatisches Anmelden fehlgeschlagen. Bitte erneut versuchen.");
+        }
       } finally {
         setAuthChecked(true);
       }
@@ -1053,43 +1041,66 @@ useEffect(() => {
     try {
       if (isRegisterMode) {
         // ---------- REGISTRIEREN mit 50 Bonuspunkten ----------
-        const cred = await createUserWithEmailAndPassword(
-          auth,
-          trimmedEmail,
-          trimmedPassword
-        );
+        let cred: any = null;
 
-        const uid = cred.user.uid;
-        const userRef = doc(db, "users", uid);
+        try {
+          cred = await createUserWithEmailAndPassword(
+            auth,
+            trimmedEmail,
+            trimmedPassword
+          );
 
-        // Startkonto mit Bonus
-        await setDoc(userRef, {
-          email: trimmedEmail,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-          dateOfBirth: normalizedBirthDate,
-          ...getBirthDayMonth(normalizedBirthDate),
-          street: street.trim(),
-          zip: zip.trim(),
-          city: city.trim(),
-          phone: phone.trim(),
-          marketingConsent: consentMarketing,
-          points: 50, // Registrierungsbonus
-          registrationBonusGranted: true,
-          createdAt: serverTimestamp(),
-        });
+          const uid = cred.user.uid;
+          const userRef = doc(db, "users", uid);
+          const bonusVisitRef = doc(collection(userRef, "visits"));
 
-        // Historie-Eintrag für den Bonus
-        const visitsRef = collection(userRef, "visits");
-        await setDoc(doc(visitsRef), {
-          reason: "Registrierungsbonus",
-          points: 50,
-          amount: null,
-          createdAt: serverTimestamp(),
-        });
+          const batch = writeBatch(db);
 
-        setIsRegisterMode(false); // nach Registrierung zurück auf Login-Ansicht
+          // Startkonto mit Bonus
+          batch.set(userRef, {
+            email: trimmedEmail,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+            dateOfBirth: normalizedBirthDate,
+            ...getBirthDayMonth(normalizedBirthDate),
+            street: street.trim(),
+            zip: zip.trim(),
+            city: city.trim(),
+            phone: phone.trim(),
+            marketingConsent: consentMarketing,
+            points: 50, // Registrierungsbonus
+            registrationBonusGranted: true,
+            createdAt: serverTimestamp(),
+          });
+
+          // Historie-Eintrag für den Bonus
+          batch.set(bonusVisitRef, {
+            reason: "Registrierungsbonus",
+            points: 50,
+            amount: null,
+            createdAt: serverTimestamp(),
+          });
+
+          await batch.commit();
+          setAuthNotice(
+            "Registrierung erfolgreich. Bitte bestätige die Verifizierungs-E-Mail und logge dich danach ein."
+          );
+          setIsRegisterMode(false); // nach Registrierung zurück auf Login-Ansicht
+        } catch (registerErr) {
+          // Falls Firestore schlägt, Auth-Account aufräumen, damit keine halbfertigen Konten verbleiben
+          if (cred?.user) {
+            try {
+              await deleteUser(cred.user);
+            } catch (cleanupErr) {
+              console.error(
+                "Cleanup nach fehlgeschlagener Registrierung fehlgeschlagen:",
+                cleanupErr
+              );
+            }
+          }
+          throw registerErr;
+        }
       } else {
         // ---------- EINLOGGEN ----------
         const cred = await signInWithEmailAndPassword(
@@ -1121,8 +1132,16 @@ useEffect(() => {
         setAuthError("Das Passwort ist zu schwach (mind. 6 Zeichen).");
       } else if (err.code === "auth/email-already-in-use") {
         setAuthError("Für diese E-Mail existiert bereits ein Konto.");
+      } else if (err.code === "permission-denied") {
+        setAuthError(
+          "Deine Registrierung konnte nicht gespeichert werden. Bitte Internetverbindung prüfen oder später erneut versuchen."
+        );
       } else if (err.code === "auth/too-many-requests") {
         setAuthError("Zu viele Anfragen. Bitte warte kurz und versuche es erneut.");
+      } else if (err?.message === "USER_PROFILE_MISSING") {
+        setAuthError(
+          "Dein Profil konnte nicht geladen werden. Bitte melde dich erneut an oder registriere dich noch einmal."
+        );
       } else {
         setAuthError("Es ist ein Fehler aufgetreten. Bitte später erneut versuchen.");
       }
